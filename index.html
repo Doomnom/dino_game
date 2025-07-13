@@ -17,15 +17,48 @@
             margin-top: 20px;
             color: black; /* Revert to original black text */
         }
+        #scorePanel {
+            text-align: center;
+            font-family: Arial, sans-serif;
+            margin-top: 10px;
+        }
+        #submitScore {
+            display: none;
+            text-align: center;
+            margin-top: 20px;
+        }
+        #leaderboard {
+            text-align: center;
+            font-family: Arial, sans-serif;
+            margin-top: 20px;
+        }
     </style>
 </head>
 <body>
     <canvas id="gameCanvas" width="800" height="400"></canvas>
     <div id="gameOver">Game Over! Press Space or Tap to Restart</div>
+    <div id="scorePanel">
+        High Score: <span id="highScore">0</span><br>
+        Score: <span id="score">0</span>
+    </div>
+    <div id="submitScore">
+        Enter your name: <input type="text" id="playerName" maxlength="20">
+        <button onclick="submitScore()">Submit Score</button>
+    </div>
+    <div id="leaderboard">
+        <h3>Global Top 5 High Scores</h3>
+        <pre id="highScoresList"></pre>
+    </div>
     <script>
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
         const gameOverDiv = document.getElementById('gameOver');
+        const scoreDisplay = document.getElementById('score');
+        const highScoreDisplay = document.getElementById('highScore');
+        const submitScoreDiv = document.getElementById('submitScore');
+        const playerNameInput = document.getElementById('playerName');
+        const leaderboardDiv = document.getElementById('leaderboard');
+        const highScoresList = document.getElementById('highScoresList');
 
         // Game objects
         let dino = {
@@ -52,6 +85,9 @@
         let imagesLoaded = 0;
         let totalImages = 0;
         const loadTimeout = 5000;
+
+        // Load local top 5 scores
+        let localTopScores = JSON.parse(localStorage.getItem('topScores')) || [];
 
         // Sprite images
         const images = {
@@ -206,6 +242,11 @@
                         highScore = score;
                         localStorage.setItem('highScore', highScore);
                     }
+                    // Update local top 5 scores
+                    localTopScores.push(score);
+                    localTopScores.sort((a, b) => b - a);
+                    localTopScores = localTopScores.slice(0, 5);
+                    localStorage.setItem('topScores', JSON.stringify(localTopScores));
                 }
             }
         }
@@ -269,6 +310,7 @@
                 dino.isJumping = false;
                 dino.isDucking = false;
                 lastObstacleType = null;
+                submitScoreDiv.style.display = 'block';
             }
         });
 
@@ -310,6 +352,7 @@
                     dino.isJumping = false;
                     dino.isDucking = false;
                     lastObstacleType = null;
+                    submitScoreDiv.style.display = 'block';
                 }
             }
         });
@@ -319,9 +362,34 @@
             dino.isDucking = false; // Stop ducking when touch ends
         });
 
+        // Score submission
+        function submitScore() {
+            const name = playerNameInput.value.trim();
+            if (name && highScore > 0) {
+                const scoreEntry = `${name}: ${highScore}`;
+                // This would typically involve sending data to a server, but since GitHub Pages is static,
+                // players should copy this text and ask you to append it to highscores.txt
+                alert(`Please send this to the game admin to update the global leaderboard:\n${scoreEntry}`);
+                playerNameInput.value = '';
+                submitScoreDiv.style.display = 'none';
+            }
+        }
+
+        // Load and display global high scores
+        function loadHighScores() {
+            fetch('https://doomnom.github.io/dino_game/highscores.txt')
+                .then(response => response.text())
+                .then(text => {
+                    highScoresList.textContent = text || 'No high scores yet.';
+                })
+                .catch(error => {
+                    highScoresList.textContent = 'Error loading high scores.';
+                    console.error('Error:', error);
+                });
+        }
+
         // Game loop
         function gameLoop() {
-            // Remove dark background fill, revert to default white canvas
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
             if (imagesLoaded < totalImages) {
@@ -357,16 +425,14 @@
                 }
             }
 
-            ctx.fillStyle = 'black';
-            ctx.font = '20px Arial';
-            ctx.textAlign = 'left';
-            ctx.fillText('High Score: ' + highScore, 600, 30);
-            ctx.fillText('Score: ' + score, 600, 50);
+            scoreDisplay.textContent = score;
+            highScoreDisplay.textContent = highScore;
 
             requestAnimationFrame(gameLoop);
         }
 
-        // Start game loop
+        // Start game loop and load high scores
+        loadHighScores();
         gameLoop();
     </script>
 </body>
