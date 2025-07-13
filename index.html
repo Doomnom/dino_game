@@ -269,18 +269,18 @@
         });
 
         // Input handling - Touch
-        canvas.addEventListener('touchstart', function(event) {
+        document.addEventListener('touchstart', function(event) {
             event.preventDefault(); // Prevent scrolling or zooming
             const touch = event.touches[0];
             const rect = canvas.getBoundingClientRect();
             const touchX = touch.clientX - rect.left;
             const touchY = touch.clientY - rect.top;
 
-            // Check if touch is in bottom-right quadrant for ducking
-            if (touchX > canvas.width / 2 && touchY > canvas.height / 2 && !gameOver && !dino.isJumping && gameStarted) {
+            // Check if touch is in bottom-right quadrant of canvas for ducking
+            if (touchX > canvas.width / 2 && touchY > canvas.height / 2 && touchX >= 0 && touchY >= 0 && touchX <= canvas.width && touchY <= canvas.height && !gameOver && !dino.isJumping && gameStarted) {
                 dino.isDucking = true;
             } else {
-                // Tap anywhere else to jump, start, or restart
+                // Tap anywhere to jump, start, or restart
                 if (!gameOver && !gameStarted) {
                     gameStarted = true;
                 } else if (!gameOver && gameStarted && !dino.isJumping) {
@@ -303,7 +303,7 @@
             }
         });
 
-        canvas.addEventListener('touchend', function(event) {
+        document.addEventListener('touchend', function(event) {
             event.preventDefault();
             dino.isDucking = false; // Stop ducking when touch ends
         });
