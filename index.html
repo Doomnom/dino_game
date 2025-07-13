@@ -67,8 +67,17 @@
     </div>
     <script>
         window.onload = function() {
-            // Initialize Firebase
-            firebase.initializeApp(firebaseConfig);
+            // Ensure Firebase is loaded and initialize
+            if (typeof firebase === 'undefined') {
+                console.error('Firebase is not loaded. Check your internet connection or script sources.');
+                return;
+            }
+            try {
+                firebase.initializeApp(firebaseConfig);
+            } catch (error) {
+                console.error('Firebase initialization error:', error);
+                return;
+            }
 
             const canvas = document.getElementById('gameCanvas');
             const ctx = canvas.getContext('2d');
