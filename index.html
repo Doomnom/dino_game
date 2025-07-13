@@ -4,10 +4,10 @@
     <title>Dino Runner Game</title>
     <style>
         canvas {
-            border: 1px solid black; /* Revert to original black border */
+            border: 1px solid black;
             display: block;
             margin: 0 auto;
-            max-width: 100vw; /* Ensure canvas fits mobile screens */
+            max-width: 100vw;
         }
         #gameOver {
             display: none;
@@ -15,17 +15,12 @@
             font-family: Arial, sans-serif;
             font-size: 24px;
             margin-top: 20px;
-            color: black; /* Revert to original black text */
+            color: black;
         }
         #scorePanel {
             text-align: center;
             font-family: Arial, sans-serif;
             margin-top: 10px;
-        }
-        #submitScore {
-            display: none;
-            text-align: center;
-            margin-top: 20px;
         }
         #leaderboard {
             text-align: center;
@@ -42,7 +37,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js"></script>
     <script>
-        // Firebase configuration (replace with your own from Firebase Console)
+        // Firebase configuration
         const firebaseConfig = {
             apiKey: "AIzaSyAJCkPYWK3mDTsbEw_VDgh30PbY7Z3BhFg",
             authDomain: "dinogame-r3dnax.firebaseapp.com",
@@ -63,10 +58,6 @@
         High Score: <span id="highScore">0</span><br>
         Score: <span id="score">0</span>
     </div>
-    <div id="submitScore">
-        Enter your name: <input type="text" id="playerName" maxlength="20">
-        <button onclick="submitScore()">Submit Score</button>
-    </div>
     <div id="leaderboard">
         <h3>Global Top 5 High Scores</h3>
         <pre id="highScoresList"></pre>
@@ -81,16 +72,13 @@
         const gameOverDiv = document.getElementById('gameOver');
         const scoreDisplay = document.getElementById('score');
         const highScoreDisplay = document.getElementById('highScore');
-        const submitScoreDiv = document.getElementById('submitScore');
-        const playerNameInput = document.getElementById('playerName');
-        const leaderboardDiv = document.getElementById('leaderboard');
         const highScoresList = document.getElementById('highScoresList');
         const localScoresList = document.getElementById('localScoresList');
 
         // Game objects
         let dino = {
             x: 50,
-            y: 340 - 60, // Start dino at ground level (340 - height)
+            y: 340 - 60,
             width: 40,
             height: 60,
             vy: 0,
@@ -140,7 +128,7 @@
         images.sawblade[1].src = 'https://doomnom.github.io/dino_game/sprites/sawblade2.png';
         images.sawblade[2].src = 'https://doomnom.github.io/dino_game/sprites/sawblade3.png';
         images.drone[0].src = 'https://doomnom.github.io/dino_game/sprites/drone1.png';
-        images.drone[1].src = 'https://doomnom.github.io/dino_game/sprites/drone2.png';
+        images.drone[1].src = 'https://doommnom.github.io/dino_game/sprites/drone2.png';
 
         // Image loading with error handling
         for (let key in images) {
@@ -174,7 +162,7 @@
         // Drawing functions
         function drawDino() {
             if (useFallbackShapes) {
-                ctx.fillStyle = 'blue'; // Revert to original blue
+                ctx.fillStyle = 'blue';
                 if (dino.isDucking) {
                     ctx.fillRect(dino.x, dino.y + 20, dino.width, dino.height / 2);
                 } else {
@@ -195,15 +183,15 @@
         function drawObstacle(obstacle) {
             if (useFallbackShapes) {
                 if (obstacle.type === 'tentacle') {
-                    ctx.fillStyle = 'purple'; // Revert to original purple
+                    ctx.fillStyle = 'purple';
                     ctx.fillRect(obstacle.x, obstacle.y, obstacle.width, obstacle.height);
                 } else if (obstacle.type === 'sawblade') {
-                    ctx.fillStyle = 'silver'; // Revert to original silver
+                    ctx.fillStyle = 'silver';
                     ctx.beginPath();
                     ctx.arc(obstacle.x + obstacle.width / 2, obstacle.y + obstacle.height / 2, obstacle.width / 2, 0, Math.PI * 2);
                     ctx.fill();
                 } else if (obstacle.type === 'drone') {
-                    ctx.fillStyle = 'red'; // Revert to original red
+                    ctx.fillStyle = 'red';
                     ctx.beginPath();
                     ctx.moveTo(obstacle.x, obstacle.y + obstacle.height);
                     ctx.lineTo(obstacle.x + obstacle.width / 2, obstacle.y);
@@ -224,7 +212,7 @@
         }
 
         function drawGround() {
-            ctx.fillStyle = 'gray'; // Revert to original light gray
+            ctx.fillStyle = 'gray';
             ctx.fillRect(0, 340, canvas.width, 10);
         }
 
@@ -234,7 +222,7 @@
                 let type;
                 let yPos;
                 if (lastObstacleType === 'sawblade' || lastObstacleType === 'drone') {
-                    type = 'tentacle';
+                    type = 'tent Dacle';
                     yPos = 300;
                 } else {
                     const rand = Math.random();
@@ -297,7 +285,6 @@
             if (dino.isJumping) {
                 dino.vy += dino.gravity;
                 dino.y += dino.vy;
-                // Cap y-position to prevent clipping through ground
                 if (dino.isDucking) {
                     if (dino.y > 340 - dino.height / 2) {
                         dino.y = 340 - dino.height / 2;
@@ -339,18 +326,16 @@
 
         // Input handling - Touch
         document.addEventListener('touchstart', function(event) {
-            event.preventDefault(); // Prevent scrolling or zooming
+            event.preventDefault();
             const touch = event.touches[0];
             const rect = canvas.getBoundingClientRect();
-            const touchX = touch.clientX - rect.left; // Canvas-relative x
-            const touchY = touch.clientY - rect.top;  // Canvas-relative y
+            const touchX = touch.clientX - rect.left;
+            const touchY = touch.clientY - rect.top;
 
-            // Check if touch is within canvas bounds and in bottom-right quadrant for ducking
             if (touchX >= 0 && touchY >= 0 && touchX <= canvas.width && touchY <= canvas.height &&
                 touchX > canvas.width / 2 && touchY > canvas.height / 2 && !gameOver && !dino.isJumping && gameStarted) {
                 dino.isDucking = true;
             } else {
-                // Tap anywhere to jump, start, or restart
                 if (!gameOver && !gameStarted) {
                     gameStarted = true;
                 } else if (!gameOver && gameStarted && !dino.isJumping) {
@@ -365,8 +350,24 @@
 
         document.addEventListener('touchend', function(event) {
             event.preventDefault();
-            dino.isDucking = false; // Stop ducking when touch ends
+            dino.isDucking = false;
         });
+
+        // Automatically save high score to Firebase
+        function saveHighScoreToFirebase() {
+            if (highScore > 0) {
+                const scoreEntry = {
+                    name: 'Anonymous', // Default name since manual input is removed
+                    score: highScore,
+                    timestamp: firebase.database.ServerValue.TIMESTAMP
+                };
+                firebase.database().ref('highscores').push(scoreEntry)
+                    .then(() => {
+                        loadHighScores(); // Refresh global scores
+                    })
+                    .catch(error => console.error('Error saving score:', error));
+            }
+        }
 
         // Reset game state
         function resetGame() {
@@ -381,25 +382,7 @@
             dino.isJumping = false;
             dino.isDucking = false;
             lastObstacleType = null;
-            submitScoreDiv.style.display = 'block';
             loadHighScores();
-        }
-
-        // Score submission
-        function submitScore() {
-            const name = playerNameInput.value.trim();
-            if (name && highScore > 0) {
-                const scoreEntry = { name: name, score: highScore, timestamp: Date.now() };
-                firebase.database().ref('highscores').push(scoreEntry)
-                    .then(() => {
-                        playerNameInput.value = '';
-                        submitScoreDiv.style.display = 'none';
-                        loadHighScores(); // Refresh global scores
-                    })
-                    .catch(error => alert('Error submitting score: ' + error.message));
-            } else {
-                submitScoreDiv.style.display = 'none';
-            }
         }
 
         // Load and display global high scores
@@ -455,7 +438,7 @@
                 if (checkCollision()) {
                     gameOver = true;
                     gameOverDiv.style.display = 'block';
-                    submitScoreDiv.style.display = 'block';
+                    saveHighScoreToFirebase(); // Auto-save high score
                 }
                 for (let obstacle of obstacles) {
                     drawObstacle(obstacle);
@@ -469,8 +452,8 @@
         }
 
         // Start game loop and load high scores asynchronously
-        gameLoop(); // Start game loop immediately
-        loadHighScores(); // Load high scores in background
+        gameLoop();
+        loadHighScores();
         updateLocalScoresDisplay();
     </script>
 </body>
