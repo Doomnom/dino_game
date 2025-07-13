@@ -70,12 +70,14 @@
             // Ensure Firebase is loaded and initialize
             if (typeof firebase === 'undefined') {
                 console.error('Firebase is not loaded. Check your internet connection or script sources.');
+                gameLoop(); // Start game even if Firebase fails
                 return;
             }
             try {
                 firebase.initializeApp(firebaseConfig);
             } catch (error) {
                 console.error('Firebase initialization error:', error);
+                gameLoop(); // Start game even if Firebase initialization fails
                 return;
             }
 
@@ -149,12 +151,12 @@
                     images[key].forEach(img => {
                         img.onload = () => {
                             imagesLoaded++;
-                            if (imagesLoaded === totalImages) gameLoop(); // Start game once all images are loaded
+                            if (imagesLoaded === totalImages) gameLoop();
                         };
                         img.onerror = () => {
                             imagesLoaded++;
                             useFallbackShapes = true;
-                            if (imagesLoaded === totalImages) gameLoop(); // Start with fallbacks if errors occur
+                            if (imagesLoaded === totalImages) gameLoop();
                         };
                     });
                 } else {
@@ -463,8 +465,8 @@
                 requestAnimationFrame(gameLoop);
             }
 
-            // Start game loop and load high scores asynchronously
-            if (imagesLoaded >= totalImages) gameLoop(); // Start immediately if images are already loaded
+            // Start game loop immediately as a fallback
+            gameLoop();
             loadHighScores();
             updateLocalScoresDisplay();
         };
