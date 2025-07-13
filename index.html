@@ -453,6 +453,19 @@
             updateLocalScoresDisplay();
         };
     </script>
-</body>
+    <body>
+        <canvas id="gameCanvas" width="800" height="400"></canvas>
+        <div id="scorePanel">
+            Score: <span id="score">0</span> | High Score: <span id="highScore">0</span>
+        </div>
+        <div id="gameOver">Game Over! Press Space or Tap to Restart</div>
+        <div id="leaderboard">
+            Global High Scores:<br>
+            <div id="highScoresList"></div>
+        </div>
+        <div id="localTopScores">
+            Local Top 5 Scores:<br>
+            <div id="localScoresList"></div>
+        </div>
+    </body>
 </html>
-<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'95ea39566c8d6186',t:'MTc1MjQyNDg0NS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script>
