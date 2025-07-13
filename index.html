@@ -39,6 +39,21 @@
             font-size: 16px;
         }
     </style>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js"></script>
+    <script>
+        // Firebase configuration (replace with your own from Firebase Console)
+        const firebaseConfig = {
+            apiKey: "AIzaSyAJCkPYWK3mDTsbEw_VDgh30PbY7Z3BhFg",
+            authDomain: "dinogame-r3dnax.firebaseapp.com",
+            databaseURL: "https://dinogame-r3dnax-default-rtdb.europe-west1.firebasedatabase.app",
+            projectId: "dinogame-r3dnax",
+            storageBucket: "dinogame-r3dnax.firebasestorage.app",
+            messagingSenderId: "401593443465",
+            appId: "1:401593443465:web:492e13e480e0488d3d1258"
+        };
+        firebase.initializeApp(firebaseConfig);
+    </script>
 </head>
 <body>
     <canvas id="gameCanvas" width="800" height="400"></canvas>
@@ -373,10 +388,15 @@
         function submitScore() {
             const name = playerNameInput.value.trim();
             if (name && highScore > 0) {
-                const scoreEntry = `${name}: ${highScore}`;
-                alert(`Please send this to the game admin to update the global leaderboard:\n${scoreEntry}\nThe admin will add it to highscores.txt.`);
-                playerNameInput.value = '';
-                submitScoreDiv.style.display = 'none';
+                const scoreEntry = { name: name, score: highScore, timestamp: Date.now() };
+                firebase.database().ref('highscores').push(scoreEntry)
+                    .then(() => {
+                        alert(`Score submitted! Check the global leaderboard.`);
+                        playerNameInput.value = '';
+                        submitScoreDiv.style.display = 'none';
+                        loadHighScores(); // Refresh global scores
+                    })
+                    .catch(error => alert('Error submitting score: ' + error.message));
             } else {
                 submitScoreDiv.style.display = 'none';
             }
@@ -384,21 +404,14 @@
 
         // Load and display global high scores
         function loadHighScores() {
-            fetch('https://doomnom.github.io/dino_game/highscores.txt')
-                .then(response => {
-                    if (!response.ok) {
-                        highScoresList.textContent = 'No high scores available yet. Ask the admin to create highscores.txt.';
-                        return Promise.reject(new Error('File not found or inaccessible'));
-                    }
-                    return response.text();
-                })
-                .then(text => {
-                    const scores = text.trim().split('\n').filter(line => line).sort((a, b) => {
-                        const scoreA = parseInt(a.split(': ')[1] || 0);
-                        const scoreB = parseInt(b.split(': ')[1] || 0);
-                        return scoreB - scoreA;
-                    }).slice(0, 5);
-                    highScoresList.textContent = scores.length ? scores.join('\n') : 'No high scores yet.';
+            firebase.database().ref('highscores').orderByChild('score').limitToLast(5)
+                .once('value')
+                .then(snapshot => {
+                    const scores = [];
+                    snapshot.forEach(childSnapshot => {
+                        scores.unshift(childSnapshot.val());
+                    });
+                    highScoresList.textContent = scores.length ? scores.map(s => `${s.name}: ${s.score}`).join('\n') : 'No high scores yet.';
                 })
                 .catch(error => {
                     console.error('Leaderboard fetch error:', error);
