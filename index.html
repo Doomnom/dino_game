@@ -52,7 +52,7 @@
     </div>
     <div id="submitScore">
         Enter your name: <input type="text" id="playerName" maxlength="20">
-        <button onclick="submitScore()">Submit Score</button>
+        <button id="submitScoreButton">Submit Score</button>
     </div>
     <div id="leaderboard">
         <h3>Global Top 5 High Scores</h3>
@@ -84,6 +84,7 @@
             const highScoreDisplay = document.getElementById('highScore');
             const submitScoreDiv = document.getElementById('submitScore');
             const playerNameInput = document.getElementById('playerName');
+            const submitScoreButton = document.getElementById('submitScoreButton');
             const leaderboardDiv = document.getElementById('leaderboard');
             const highScoresList = document.getElementById('highScoresList');
             const localScoresList = document.getElementById('localScoresList');
@@ -402,6 +403,9 @@
                     submitScoreDiv.style.display = 'none';
                 }
             }
+
+            // Attach submitScore to button click
+            submitScoreButton.addEventListener('click', submitScore);
 
             // Load and display global high scores
             function loadHighScores() {
