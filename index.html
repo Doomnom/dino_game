@@ -32,6 +32,12 @@
             font-family: Arial, sans-serif;
             margin-top: 20px;
         }
+        #localTopScores {
+            text-align: center;
+            font-family: Arial, sans-serif;
+            margin-top: 10px;
+            font-size: 16px;
+        }
     </style>
 </head>
 <body>
@@ -49,6 +55,10 @@
         <h3>Global Top 5 High Scores</h3>
         <pre id="highScoresList"></pre>
     </div>
+    <div id="localTopScores">
+        <h4>Your Top 5 Scores</h4>
+        <pre id="localScoresList"></pre>
+    </div>
     <script>
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
@@ -59,6 +69,7 @@
         const playerNameInput = document.getElementById('playerName');
         const leaderboardDiv = document.getElementById('leaderboard');
         const highScoresList = document.getElementById('highScoresList');
+        const localScoresList = document.getElementById('localScoresList');
 
         // Game objects
         let dino = {
@@ -247,6 +258,7 @@
                     localTopScores.sort((a, b) => b - a);
                     localTopScores = localTopScores.slice(0, 5);
                     localStorage.setItem('topScores', JSON.stringify(localTopScores));
+                    updateLocalScoresDisplay();
                 }
             }
         }
@@ -299,18 +311,7 @@
             } else if (event.code === 'ArrowDown' && !gameOver && !dino.isJumping && gameStarted) {
                 dino.isDucking = true;
             } else if (event.code === 'Space' && gameOver) {
-                obstacles = [];
-                score = 0;
-                speed = 5;
-                gameOver = false;
-                gameStarted = false;
-                gameOverDiv.style.display = 'none';
-                dino.y = 340 - dino.height;
-                dino.vy = 0;
-                dino.isJumping = false;
-                dino.isDucking = false;
-                lastObstacleType = null;
-                submitScoreDiv.style.display = 'block';
+                resetGame();
             }
         });
 
@@ -341,18 +342,7 @@
                     dino.isJumping = true;
                     dino.isDucking = false;
                 } else if (gameOver) {
-                    obstacles = [];
-                    score = 0;
-                    speed = 5;
-                    gameOver = false;
-                    gameStarted = false;
-                    gameOverDiv.style.display = 'none';
-                    dino.y = 340 - dino.height;
-                    dino.vy = 0;
-                    dino.isJumping = false;
-                    dino.isDucking = false;
-                    lastObstacleType = null;
-                    submitScoreDiv.style.display = 'block';
+                    resetGame();
                 }
             }
         });
@@ -362,15 +352,32 @@
             dino.isDucking = false; // Stop ducking when touch ends
         });
 
+        // Reset game state
+        function resetGame() {
+            obstacles = [];
+            score = 0;
+            speed = 5;
+            gameOver = false;
+            gameStarted = false;
+            gameOverDiv.style.display = 'none';
+            dino.y = 340 - dino.height;
+            dino.vy = 0;
+            dino.isJumping = false;
+            dino.isDucking = false;
+            lastObstacleType = null;
+            submitScoreDiv.style.display = 'block';
+            loadHighScores();
+        }
+
         // Score submission
         function submitScore() {
             const name = playerNameInput.value.trim();
             if (name && highScore > 0) {
                 const scoreEntry = `${name}: ${highScore}`;
-                // This would typically involve sending data to a server, but since GitHub Pages is static,
-                // players should copy this text and ask you to append it to highscores.txt
-                alert(`Please send this to the game admin to update the global leaderboard:\n${scoreEntry}`);
+                alert(`Please send this to the game admin to update the global leaderboard:\n${scoreEntry}\nThe admin will add it to highscores.txt.`);
                 playerNameInput.value = '';
+                submitScoreDiv.style.display = 'none';
+            } else {
                 submitScoreDiv.style.display = 'none';
             }
         }
@@ -378,14 +385,27 @@
         // Load and display global high scores
         function loadHighScores() {
             fetch('https://doomnom.github.io/dino_game/highscores.txt')
-                .then(response => response.text())
+                .then(response => {
+                    if (!response.ok) throw new Error('File not found');
+                    return response.text();
+                })
                 .then(text => {
-                    highScoresList.textContent = text || 'No high scores yet.';
+                    const scores = text.trim().split('\n').filter(line => line).sort((a, b) => {
+                        const scoreA = parseInt(a.split(': ')[1] || 0);
+                        const scoreB = parseInt(b.split(': ')[1] || 0);
+                        return scoreB - scoreA;
+                    }).slice(0, 5);
+                    highScoresList.textContent = scores.length ? scores.join('\n') : 'No high scores yet.';
                 })
                 .catch(error => {
-                    highScoresList.textContent = 'Error loading high scores.';
+                    highScoresList.textContent = 'No high scores available yet. Ask the admin to create highscores.txt.';
                     console.error('Error:', error);
                 });
+        }
+
+        // Update and display local top 5 scores
+        function updateLocalScoresDisplay() {
+            localScoresList.textContent = localTopScores.length ? localTopScores.join('\n') : 'No local scores yet.';
         }
 
         // Game loop
@@ -419,6 +439,7 @@
                 if (checkCollision()) {
                     gameOver = true;
                     gameOverDiv.style.display = 'block';
+                    submitScoreDiv.style.display = 'block';
                 }
                 for (let obstacle of obstacles) {
                     drawObstacle(obstacle);
@@ -433,6 +454,7 @@
 
         // Start game loop and load high scores
         loadHighScores();
+        updateLocalScoresDisplay();
         gameLoop();
     </script>
 </body>

@@ -1,0 +1,2 @@
+Top Score: 2360
+Player1: 2360\nPlayer2: 300
