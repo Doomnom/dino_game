@@ -39,9 +39,29 @@
             font-size: 16px;
         }
     </style>
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js"></script>
-    
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js';
+        import { getDatabase, ref, push, onValue } from 'https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js';
+
+        // Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyAJCkPYWK3mDTsbEw_VDgh30PbY7Z3BhFg",
+            authDomain: "dinogame-r3dnax.firebaseapp.com",
+            databaseURL: "https://dinogame-r3dnax-default-rtdb.europe-west1.firebasedatabase.app",
+            projectId: "dinogame-r3dnax",
+            storageBucket: "dinogame-r3dnax.firebasestorage.app",
+            messagingSenderId: "401593443465",
+            appId: "1:401593443465:web:492e13e480e0488d3d1258",
+            measurementId: "G-JS0KZL2BT5"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const database = getDatabase(app);
+
+        // Export Firebase database methods to global scope for use in non-module script
+        window.firebaseDatabase = { ref, push, onValue, database };
+    </script>
 </head>
 <body>
     <canvas id="gameCanvas" width="800" height="400"></canvas>
@@ -64,19 +84,6 @@
     </div>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            // Firebase configuration
-            const firebaseConfig = {
-                apiKey: "AIzaSyAJCkPYWK3mDTsbEw_VDgh30PbY7Z3BhFg",
-                authDomain: "dinogame-r3dnax.firebaseapp.com",
-                databaseURL: "https://dinogame-r3dnax-default-rtdb.europe-west1.firebasedatabase.app",
-                projectId: "dinogame-r3dnax",
-                storageBucket: "dinogame-r3dnax.firebasestorage.app",
-                messagingSenderId: "401593443465",
-                appId: "1:401593443465:web:492e13e480e0488d3d1258",
-                measurementId: "G-JS0KZL2BT5"
-            };
-            firebase.initializeApp(firebaseConfig);
-
             const canvas = document.getElementById('gameCanvas');
             const ctx = canvas.getContext('2d');
             const gameOverDiv = document.getElementById('gameOver');
@@ -391,11 +398,11 @@
                 const name = playerNameInput.value.trim();
                 if (name && highScore > 0) {
                     const scoreEntry = { name: name, score: highScore, timestamp: Date.now() };
-                    firebase.database().ref('highscores').push(scoreEntry)
+                    firebaseDatabase.push(firebaseDatabase.ref(firebaseDatabase.database, 'highscores'), scoreEntry)
                         .then(() => {
                             playerNameInput.value = '';
                             submitScoreDiv.style.display = 'none';
-                            loadHighScores(); // Refresh global scores
+                            loadHighScores();
                         })
                         .catch(error => alert('Error submitting score: ' + error.message));
                 } else {
@@ -405,19 +412,18 @@
 
             // Load and display global high scores
             function loadHighScores() {
-                firebase.database().ref('highscores').orderByChild('score').limitToLast(5)
-                    .once('value')
-                    .then(snapshot => {
-                        const scores = [];
-                        snapshot.forEach(childSnapshot => {
-                            scores.unshift(childSnapshot.val());
-                        });
-                        highScoresList.textContent = scores.length ? scores.map(s => `${s.name}: ${s.score}`).join('\n') : 'No high scores yet.';
-                    })
-                    .catch(error => {
-                        console.error('Leaderboard fetch error:', error);
-                        highScoresList.textContent = 'Error loading high scores. Check console for details.';
+                const highScoresRef = firebaseDatabase.ref(firebaseDatabase.database, 'highscores');
+                firebaseDatabase.onValue(highScoresRef, (snapshot) => {
+                    const scores = [];
+                    snapshot.forEach(childSnapshot => {
+                        scores.unshift(childSnapshot.val());
                     });
+                    scores.sort((a, b) => b.score - a.score);
+                    highScoresList.textContent = scores.length ? scores.slice(0, 5).map(s => `${s.name}: ${s.score}`).join('\n') : 'No high scores yet.';
+                }, (error) => {
+                    console.error('Leaderboard fetch error:', error);
+                    highScoresList.textContent = 'Error loading high scores. Check console for details.';
+                });
             }
 
             // Update and display local top 5 scores
@@ -470,10 +476,11 @@
             }
 
             // Start game loop and load high scores asynchronously
-            gameLoop(); // Start game loop immediately
-            loadHighScores(); // Load high scores in background
+            gameLoop();
+            loadHighScores();
             updateLocalScoresDisplay();
         });
     </script>
+    <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'95ea57c0bb9da9db',t:'MTc1MjQyNjA5MS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script>
 </body>
 </html>
