@@ -50,7 +50,8 @@
             projectId: "dinogame-r3dnax",
             storageBucket: "dinogame-r3dnax.firebasestorage.app",
             messagingSenderId: "401593443465",
-            appId: "1:401593443465:web:492e13e480e0488d3d1258"
+            appId: "1:401593443465:web:492e13e480e0488d3d1258",
+            measurementId: "G-JS0KZL2BT5"
         };
         firebase.initializeApp(firebaseConfig);
     </script>
@@ -391,7 +392,6 @@
                 const scoreEntry = { name: name, score: highScore, timestamp: Date.now() };
                 firebase.database().ref('highscores').push(scoreEntry)
                     .then(() => {
-                        alert(`Score submitted! Check the global leaderboard.`);
                         playerNameInput.value = '';
                         submitScoreDiv.style.display = 'none';
                         loadHighScores(); // Refresh global scores
