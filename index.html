@@ -48,7 +48,6 @@
             appId: "1:401593443465:web:492e13e480e0488d3d1258",
             measurementId: "G-JS0KZL2BT5"
         };
-        firebase.initializeApp(firebaseConfig);
     </script>
 </head>
 <body>
@@ -67,394 +66,399 @@
         <pre id="localScoresList"></pre>
     </div>
     <script>
-        const canvas = document.getElementById('gameCanvas');
-        const ctx = canvas.getContext('2d');
-        const gameOverDiv = document.getElementById('gameOver');
-        const scoreDisplay = document.getElementById('score');
-        const highScoreDisplay = document.getElementById('highScore');
-        const highScoresList = document.getElementById('highScoresList');
-        const localScoresList = document.getElementById('localScoresList');
+        window.onload = function() {
+            // Initialize Firebase
+            firebase.initializeApp(firebaseConfig);
 
-        // Game objects
-        let dino = {
-            x: 50,
-            y: 340 - 60,
-            width: 40,
-            height: 60,
-            vy: 0,
-            gravity: 0.8,
-            jumpPower: -15,
-            isJumping: false,
-            isDucking: false
-        };
+            const canvas = document.getElementById('gameCanvas');
+            const ctx = canvas.getContext('2d');
+            const gameOverDiv = document.getElementById('gameOver');
+            const scoreDisplay = document.getElementById('score');
+            const highScoreDisplay = document.getElementById('highScore');
+            const highScoresList = document.getElementById('highScoresList');
+            const localScoresList = document.getElementById('localScoresList');
 
-        let obstacles = [];
-        let score = 0;
-        let highScore = localStorage.getItem('highScore') ? parseInt(localStorage.getItem('highScore')) : 0;
-        let speed = 5;
-        let gameOver = false;
-        let gameStarted = false;
-        let frameCount = 0;
-        let lastObstacleType = null;
-        let useFallbackShapes = false;
-        let imagesLoaded = 0;
-        let totalImages = 0;
-        const loadTimeout = 5000;
+            // Game objects
+            let dino = {
+                x: 50,
+                y: 340 - 60,
+                width: 40,
+                height: 60,
+                vy: 0,
+                gravity: 0.8,
+                jumpPower: -15,
+                isJumping: false,
+                isDucking: false
+            };
 
-        // Load local top 5 scores
-        let localTopScores = JSON.parse(localStorage.getItem('topScores')) || [];
+            let obstacles = [];
+            let score = 0;
+            let highScore = localStorage.getItem('highScore') ? parseInt(localStorage.getItem('highScore')) : 0;
+            let speed = 5;
+            let gameOver = false;
+            let gameStarted = false;
+            let frameCount = 0;
+            let lastObstacleType = null;
+            let useFallbackShapes = false;
+            let imagesLoaded = 0;
+            let totalImages = 0;
+            const loadTimeout = 5000;
 
-        // Sprite images
-        const images = {
-            dino_run: [
-                new Image(),
-                new Image(),
-                new Image()
-            ],
-            dino_jump: new Image(),
-            dino_duck: new Image(),
-            tentacle: [new Image(), new Image()],
-            sawblade: [new Image(), new Image(), new Image()],
-            drone: [new Image(), new Image()]
-        };
-        images.dino_run[0].src = 'https://doomnom.github.io/dino_game/sprites/dino_run1.png';
-        images.dino_run[1].src = 'https://doomnom.github.io/dino_game/sprites/dino_run2.png';
-        images.dino_run[2].src = 'https://doomnom.github.io/dino_game/sprites/dino_run3.png';
-        images.dino_jump.src = 'https://doomnom.github.io/dino_game/sprites/dino_jump.png';
-        images.dino_duck.src = 'https://doomnom.github.io/dino_game/sprites/dino_duck.png';
-        images.tentacle[0].src = 'https://doomnom.github.io/dino_game/sprites/tentacle1.png';
-        images.tentacle[1].src = 'https://doomnom.github.io/dino_game/sprites/tentacle2.png';
-        images.sawblade[0].src = 'https://doomnom.github.io/dino_game/sprites/sawblade1.png';
-        images.sawblade[1].src = 'https://doomnom.github.io/dino_game/sprites/sawblade2.png';
-        images.sawblade[2].src = 'https://doomnom.github.io/dino_game/sprites/sawblade3.png';
-        images.drone[0].src = 'https://doomnom.github.io/dino_game/sprites/drone1.png';
-        images.drone[1].src = 'https://doommnom.github.io/dino_game/sprites/drone2.png';
+            // Load local top 5 scores
+            let localTopScores = JSON.parse(localStorage.getItem('topScores')) || [];
 
-        // Image loading with error handling
-        for (let key in images) {
-            if (Array.isArray(images[key])) {
-                totalImages += images[key].length;
-                images[key].forEach(img => {
-                    img.onload = () => imagesLoaded++;
-                    img.onerror = () => {
+            // Sprite images
+            const images = {
+                dino_run: [
+                    new Image(),
+                    new Image(),
+                    new Image()
+                ],
+                dino_jump: new Image(),
+                dino_duck: new Image(),
+                tentacle: [new Image(), new Image()],
+                sawblade: [new Image(), new Image(), new Image()],
+                drone: [new Image(), new Image()]
+            };
+            images.dino_run[0].src = 'https://doomnom.github.io/dino_game/sprites/dino_run1.png';
+            images.dino_run[1].src = 'https://doomnom.github.io/dino_game/sprites/dino_run2.png';
+            images.dino_run[2].src = 'https://doomnom.github.io/dino_game/sprites/dino_run3.png';
+            images.dino_jump.src = 'https://doomnom.github.io/dino_game/sprites/dino_jump.png';
+            images.dino_duck.src = 'https://doomnom.github.io/dino_game/sprites/dino_duck.png';
+            images.tentacle[0].src = 'https://doomnom.github.io/dino_game/sprites/tentacle1.png';
+            images.tentacle[1].src = 'https://doomnom.github.io/dino_game/sprites/tentacle2.png';
+            images.sawblade[0].src = 'https://doomnom.github.io/dino_game/sprites/sawblade1.png';
+            images.sawblade[1].src = 'https://doomnom.github.io/dino_game/sprites/sawblade2.png';
+            images.sawblade[2].src = 'https://doomnom.github.io/dino_game/sprites/sawblade3.png';
+            images.drone[0].src = 'https://doomnom.github.io/dino_game/sprites/drone1.png';
+            images.drone[1].src = 'https://doomnom.github.io/dino_game/sprites/drone2.png';
+
+            // Image loading with error handling
+            for (let key in images) {
+                if (Array.isArray(images[key])) {
+                    totalImages += images[key].length;
+                    images[key].forEach(img => {
+                        img.onload = () => imagesLoaded++;
+                        img.onerror = () => {
+                            imagesLoaded++;
+                            useFallbackShapes = true;
+                        };
+                    });
+                } else {
+                    totalImages++;
+                    images[key].onload = () => imagesLoaded++;
+                    images[key].onerror = () => {
                         imagesLoaded++;
                         useFallbackShapes = true;
                     };
-                });
-            } else {
-                totalImages++;
-                images[key].onload = () => imagesLoaded++;
-                images[key].onerror = () => {
-                    imagesLoaded++;
+                }
+            }
+
+            // Timeout to force fallback after 5 seconds
+            setTimeout(() => {
+                if (imagesLoaded < totalImages) {
                     useFallbackShapes = true;
-                };
-            }
-        }
-
-        // Timeout to force fallback after 5 seconds
-        setTimeout(() => {
-            if (imagesLoaded < totalImages) {
-                useFallbackShapes = true;
-                imagesLoaded = totalImages;
-            }
-        }, loadTimeout);
-
-        // Drawing functions
-        function drawDino() {
-            if (useFallbackShapes) {
-                ctx.fillStyle = 'blue';
-                if (dino.isDucking) {
-                    ctx.fillRect(dino.x, dino.y + 20, dino.width, dino.height / 2);
-                } else {
-                    ctx.fillRect(dino.x, dino.y, dino.width, dino.height);
+                    imagesLoaded = totalImages;
                 }
-            } else {
-                const frame = Math.floor(frameCount / 10) % images.dino_run.length;
-                if (dino.isDucking) {
-                    ctx.drawImage(images.dino_duck, dino.x, dino.y + 20, dino.width, dino.height / 2);
-                } else if (dino.isJumping) {
-                    ctx.drawImage(images.dino_jump, dino.x, dino.y, dino.width, dino.height);
-                } else {
-                    ctx.drawImage(images.dino_run[frame], dino.x, dino.y, dino.width, dino.height);
-                }
-            }
-        }
+            }, loadTimeout);
 
-        function drawObstacle(obstacle) {
-            if (useFallbackShapes) {
-                if (obstacle.type === 'tentacle') {
-                    ctx.fillStyle = 'purple';
-                    ctx.fillRect(obstacle.x, obstacle.y, obstacle.width, obstacle.height);
-                } else if (obstacle.type === 'sawblade') {
-                    ctx.fillStyle = 'silver';
-                    ctx.beginPath();
-                    ctx.arc(obstacle.x + obstacle.width / 2, obstacle.y + obstacle.height / 2, obstacle.width / 2, 0, Math.PI * 2);
-                    ctx.fill();
-                } else if (obstacle.type === 'drone') {
-                    ctx.fillStyle = 'red';
-                    ctx.beginPath();
-                    ctx.moveTo(obstacle.x, obstacle.y + obstacle.height);
-                    ctx.lineTo(obstacle.x + obstacle.width / 2, obstacle.y);
-                    ctx.lineTo(obstacle.x + obstacle.width, obstacle.y + obstacle.height);
-                    ctx.closePath();
-                    ctx.fill();
-                }
-            } else {
-                const frame = Math.floor(frameCount / 10) % (obstacle.type === 'tentacle' ? images.tentacle.length : obstacle.type === 'sawblade' ? images.sawblade.length : images.drone.length);
-                if (obstacle.type === 'tentacle') {
-                    ctx.drawImage(images.tentacle[frame], obstacle.x, obstacle.y, obstacle.width, obstacle.height);
-                } else if (obstacle.type === 'sawblade') {
-                    ctx.drawImage(images.sawblade[frame], obstacle.x, obstacle.y, obstacle.width, obstacle.height);
-                } else if (obstacle.type === 'drone') {
-                    ctx.drawImage(images.drone[frame], obstacle.x, obstacle.y, obstacle.width, obstacle.height);
-                }
-            }
-        }
-
-        function drawGround() {
-            ctx.fillStyle = 'gray';
-            ctx.fillRect(0, 340, canvas.width, 10);
-        }
-
-        // Game logic
-        function spawnObstacle() {
-            if (frameCount % 60 === 0) {
-                let type;
-                let yPos;
-                if (lastObstacleType === 'sawblade' || lastObstacleType === 'drone') {
-                    type = 'tent Dacle';
-                    yPos = 300;
-                } else {
-                    const rand = Math.random();
-                    type = rand < 0.5 ? 'tentacle' : (rand < 0.75 ? 'sawblade' : 'drone');
-                    if (type === 'tentacle') {
-                        yPos = 300;
-                    } else if (type === 'sawblade') {
-                        yPos = 200;
+            // Drawing functions
+            function drawDino() {
+                if (useFallbackShapes) {
+                    ctx.fillStyle = 'blue';
+                    if (dino.isDucking) {
+                        ctx.fillRect(dino.x, dino.y + 20, dino.width, dino.height / 2);
                     } else {
-                        yPos = Math.random() < 0.5 ? 280 : 200;
-                    }
-                }
-                let obstacle = {
-                    x: canvas.width,
-                    y: yPos,
-                    width: type === 'tentacle' ? 20 : 30,
-                    height: type === 'tentacle' ? 40 : 30,
-                    type: type
-                };
-                obstacles.push(obstacle);
-                lastObstacleType = type;
-            }
-        }
-
-        function updateObstacles() {
-            for (let i = obstacles.length - 1; i >= 0; i--) {
-                obstacles[i].x -= speed;
-                if (obstacles[i].x + obstacles[i].width < 0) {
-                    obstacles.splice(i, 1);
-                    score += 10;
-                    if (score > highScore) {
-                        highScore = score;
-                        localStorage.setItem('highScore', highScore);
-                    }
-                    // Update local top 5 scores
-                    localTopScores.push(score);
-                    localTopScores.sort((a, b) => b - a);
-                    localTopScores = localTopScores.slice(0, 5);
-                    localStorage.setItem('topScores', JSON.stringify(localTopScores));
-                    updateLocalScoresDisplay();
-                }
-            }
-        }
-
-        function checkCollision() {
-            for (let obstacle of obstacles) {
-                let dinoHeight = dino.isDucking ? dino.height / 2 : dino.height;
-                let dinoY = dino.isDucking ? dino.y + 20 : dino.y;
-                if (dino.x < obstacle.x + obstacle.width &&
-                    dino.x + dino.width > obstacle.x &&
-                    dinoY < obstacle.y + obstacle.height &&
-                    dinoY + dinoHeight > obstacle.y) {
-                    return true;
-                }
-            }
-            return false;
-        }
-
-        function updateDino() {
-            if (dino.isJumping) {
-                dino.vy += dino.gravity;
-                dino.y += dino.vy;
-                if (dino.isDucking) {
-                    if (dino.y > 340 - dino.height / 2) {
-                        dino.y = 340 - dino.height / 2;
-                        dino.vy = 0;
-                        dino.isJumping = false;
+                        ctx.fillRect(dino.x, dino.y, dino.width, dino.height);
                     }
                 } else {
-                    if (dino.y > 340 - dino.height) {
-                        dino.y = 340 - dino.height;
-                        dino.vy = 0;
-                        dino.isJumping = false;
+                    const frame = Math.floor(frameCount / 10) % images.dino_run.length;
+                    if (dino.isDucking) {
+                        ctx.drawImage(images.dino_duck, dino.x, dino.y + 20, dino.width, dino.height / 2);
+                    } else if (dino.isJumping) {
+                        ctx.drawImage(images.dino_jump, dino.x, dino.y, dino.width, dino.height);
+                    } else {
+                        ctx.drawImage(images.dino_run[frame], dino.x, dino.y, dino.width, dino.height);
                     }
                 }
             }
-        }
 
-        // Input handling - Keyboard
-        document.addEventListener('keydown', function(event) {
-            if (event.code === 'Space' && !gameOver && !gameStarted) {
-                gameStarted = true;
-            } else if (event.code === 'Space' && !gameOver && gameStarted) {
-                if (!dino.isJumping) {
-                    dino.vy = dino.jumpPower;
-                    dino.isJumping = true;
-                    dino.isDucking = false;
+            function drawObstacle(obstacle) {
+                if (useFallbackShapes) {
+                    if (obstacle.type === 'tentacle') {
+                        ctx.fillStyle = 'purple';
+                        ctx.fillRect(obstacle.x, obstacle.y, obstacle.width, obstacle.height);
+                    } else if (obstacle.type === 'sawblade') {
+                        ctx.fillStyle = 'silver';
+                        ctx.beginPath();
+                        ctx.arc(obstacle.x + obstacle.width / 2, obstacle.y + obstacle.height / 2, obstacle.width / 2, 0, Math.PI * 2);
+                        ctx.fill();
+                    } else if (obstacle.type === 'drone') {
+                        ctx.fillStyle = 'red';
+                        ctx.beginPath();
+                        ctx.moveTo(obstacle.x, obstacle.y + obstacle.height);
+                        ctx.lineTo(obstacle.x + obstacle.width / 2, obstacle.y);
+                        ctx.lineTo(obstacle.x + obstacle.width, obstacle.y + obstacle.height);
+                        ctx.closePath();
+                        ctx.fill();
+                    }
+                } else {
+                    const frame = Math.floor(frameCount / 10) % (obstacle.type === 'tentacle' ? images.tentacle.length : obstacle.type === 'sawblade' ? images.sawblade.length : images.drone.length);
+                    if (obstacle.type === 'tentacle') {
+                        ctx.drawImage(images.tentacle[frame], obstacle.x, obstacle.y, obstacle.width, obstacle.height);
+                    } else if (obstacle.type === 'sawblade') {
+                        ctx.drawImage(images.sawblade[frame], obstacle.x, obstacle.y, obstacle.width, obstacle.height);
+                    } else if (obstacle.type === 'drone') {
+                        ctx.drawImage(images.drone[frame], obstacle.x, obstacle.y, obstacle.width, obstacle.height);
+                    }
                 }
-            } else if (event.code === 'ArrowDown' && !gameOver && !dino.isJumping && gameStarted) {
-                dino.isDucking = true;
-            } else if (event.code === 'Space' && gameOver) {
-                resetGame();
             }
-        });
 
-        document.addEventListener('keyup', function(event) {
-            if (event.code === 'ArrowDown') {
-                dino.isDucking = false;
+            function drawGround() {
+                ctx.fillStyle = 'gray';
+                ctx.fillRect(0, 340, canvas.width, 10);
             }
-        });
 
-        // Input handling - Touch
-        document.addEventListener('touchstart', function(event) {
-            event.preventDefault();
-            const touch = event.touches[0];
-            const rect = canvas.getBoundingClientRect();
-            const touchX = touch.clientX - rect.left;
-            const touchY = touch.clientY - rect.top;
+            // Game logic
+            function spawnObstacle() {
+                if (frameCount % 60 === 0) {
+                    let type;
+                    let yPos;
+                    if (lastObstacleType === 'sawblade' || lastObstacleType === 'drone') {
+                        type = 'tentacle';
+                        yPos = 300;
+                    } else {
+                        const rand = Math.random();
+                        type = rand < 0.5 ? 'tentacle' : (rand < 0.75 ? 'sawblade' : 'drone');
+                        if (type === 'tentacle') {
+                            yPos = 300;
+                        } else if (type === 'sawblade') {
+                            yPos = 200;
+                        } else {
+                            yPos = Math.random() < 0.5 ? 280 : 200;
+                        }
+                    }
+                    let obstacle = {
+                        x: canvas.width,
+                        y: yPos,
+                        width: type === 'tentacle' ? 20 : 30,
+                        height: type === 'tentacle' ? 40 : 30,
+                        type: type
+                    };
+                    obstacles.push(obstacle);
+                    lastObstacleType = type;
+                }
+            }
 
-            if (touchX >= 0 && touchY >= 0 && touchX <= canvas.width && touchY <= canvas.height &&
-                touchX > canvas.width / 2 && touchY > canvas.height / 2 && !gameOver && !dino.isJumping && gameStarted) {
-                dino.isDucking = true;
-            } else {
-                if (!gameOver && !gameStarted) {
+            function updateObstacles() {
+                for (let i = obstacles.length - 1; i >= 0; i--) {
+                    obstacles[i].x -= speed;
+                    if (obstacles[i].x + obstacles[i].width < 0) {
+                        obstacles.splice(i, 1);
+                        score += 10;
+                        if (score > highScore) {
+                            highScore = score;
+                            localStorage.setItem('highScore', highScore);
+                        }
+                        // Update local top 5 scores
+                        localTopScores.push(score);
+                        localTopScores.sort((a, b) => b - a);
+                        localTopScores = localTopScores.slice(0, 5);
+                        localStorage.setItem('topScores', JSON.stringify(localTopScores));
+                        updateLocalScoresDisplay();
+                    }
+                }
+            }
+
+            function checkCollision() {
+                for (let obstacle of obstacles) {
+                    let dinoHeight = dino.isDucking ? dino.height / 2 : dino.height;
+                    let dinoY = dino.isDucking ? dino.y + 20 : dino.y;
+                    if (dino.x < obstacle.x + obstacle.width &&
+                        dino.x + dino.width > obstacle.x &&
+                        dinoY < obstacle.y + obstacle.height &&
+                        dinoY + dinoHeight > obstacle.y) {
+                        return true;
+                    }
+                }
+                return false;
+            }
+
+            function updateDino() {
+                if (dino.isJumping) {
+                    dino.vy += dino.gravity;
+                    dino.y += dino.vy;
+                    if (dino.isDucking) {
+                        if (dino.y > 340 - dino.height / 2) {
+                            dino.y = 340 - dino.height / 2;
+                            dino.vy = 0;
+                            dino.isJumping = false;
+                        }
+                    } else {
+                        if (dino.y > 340 - dino.height) {
+                            dino.y = 340 - dino.height;
+                            dino.vy = 0;
+                            dino.isJumping = false;
+                        }
+                    }
+                }
+            }
+
+            // Input handling - Keyboard
+            document.addEventListener('keydown', function(event) {
+                if (event.code === 'Space' && !gameOver && !gameStarted) {
                     gameStarted = true;
-                } else if (!gameOver && gameStarted && !dino.isJumping) {
-                    dino.vy = dino.jumpPower;
-                    dino.isJumping = true;
-                    dino.isDucking = false;
-                } else if (gameOver) {
+                } else if (event.code === 'Space' && !gameOver && gameStarted) {
+                    if (!dino.isJumping) {
+                        dino.vy = dino.jumpPower;
+                        dino.isJumping = true;
+                        dino.isDucking = false;
+                    }
+                } else if (event.code === 'ArrowDown' && !gameOver && !dino.isJumping && gameStarted) {
+                    dino.isDucking = true;
+                } else if (event.code === 'Space' && gameOver) {
                     resetGame();
                 }
+            });
+
+            document.addEventListener('keyup', function(event) {
+                if (event.code === 'ArrowDown') {
+                    dino.isDucking = false;
+                }
+            });
+
+            // Input handling - Touch
+            document.addEventListener('touchstart', function(event) {
+                event.preventDefault();
+                const touch = event.touches[0];
+                const rect = canvas.getBoundingClientRect();
+                const touchX = touch.clientX - rect.left;
+                const touchY = touch.clientY - rect.top;
+
+                if (touchX >= 0 && touchY >= 0 && touchX <= canvas.width && touchY <= canvas.height &&
+                    touchX > canvas.width / 2 && touchY > canvas.height / 2 && !gameOver && !dino.isJumping && gameStarted) {
+                    dino.isDucking = true;
+                } else {
+                    if (!gameOver && !gameStarted) {
+                        gameStarted = true;
+                    } else if (!gameOver && gameStarted && !dino.isJumping) {
+                        dino.vy = dino.jumpPower;
+                        dino.isJumping = true;
+                        dino.isDucking = false;
+                    } else if (gameOver) {
+                        resetGame();
+                    }
+                }
+            });
+
+            document.addEventListener('touchend', function(event) {
+                event.preventDefault();
+                dino.isDucking = false;
+            });
+
+            // Automatically save high score to Firebase
+            function saveHighScoreToFirebase() {
+                if (highScore > 0) {
+                    const scoreEntry = {
+                        name: 'Anonymous',
+                        score: highScore,
+                        timestamp: firebase.database.ServerValue.TIMESTAMP
+                    };
+                    firebase.database().ref('highscores').push(scoreEntry)
+                        .then(() => {
+                            loadHighScores();
+                        })
+                        .catch(error => console.error('Error saving score:', error));
+                }
             }
-        });
 
-        document.addEventListener('touchend', function(event) {
-            event.preventDefault();
-            dino.isDucking = false;
-        });
+            // Reset game state
+            function resetGame() {
+                obstacles = [];
+                score = 0;
+                speed = 5;
+                gameOver = false;
+                gameStarted = false;
+                gameOverDiv.style.display = 'none';
+                dino.y = 340 - dino.height;
+                dino.vy = 0;
+                dino.isJumping = false;
+                dino.isDucking = false;
+                lastObstacleType = null;
+                loadHighScores();
+            }
 
-        // Automatically save high score to Firebase
-        function saveHighScoreToFirebase() {
-            if (highScore > 0) {
-                const scoreEntry = {
-                    name: 'Anonymous', // Default name since manual input is removed
-                    score: highScore,
-                    timestamp: firebase.database.ServerValue.TIMESTAMP
-                };
-                firebase.database().ref('highscores').push(scoreEntry)
-                    .then(() => {
-                        loadHighScores(); // Refresh global scores
+            // Load and display global high scores
+            function loadHighScores() {
+                firebase.database().ref('highscores').orderByChild('score').limitToLast(5)
+                    .once('value')
+                    .then(snapshot => {
+                        const scores = [];
+                        snapshot.forEach(childSnapshot => {
+                            scores.unshift(childSnapshot.val());
+                        });
+                        highScoresList.textContent = scores.length ? scores.map(s => `${s.name}: ${s.score}`).join('\n') : 'No high scores yet.';
                     })
-                    .catch(error => console.error('Error saving score:', error));
-            }
-        }
-
-        // Reset game state
-        function resetGame() {
-            obstacles = [];
-            score = 0;
-            speed = 5;
-            gameOver = false;
-            gameStarted = false;
-            gameOverDiv.style.display = 'none';
-            dino.y = 340 - dino.height;
-            dino.vy = 0;
-            dino.isJumping = false;
-            dino.isDucking = false;
-            lastObstacleType = null;
-            loadHighScores();
-        }
-
-        // Load and display global high scores
-        function loadHighScores() {
-            firebase.database().ref('highscores').orderByChild('score').limitToLast(5)
-                .once('value')
-                .then(snapshot => {
-                    const scores = [];
-                    snapshot.forEach(childSnapshot => {
-                        scores.unshift(childSnapshot.val());
+                    .catch(error => {
+                        console.error('Leaderboard fetch error:', error);
+                        highScoresList.textContent = 'Error loading high scores. Check console for details.';
                     });
-                    highScoresList.textContent = scores.length ? scores.map(s => `${s.name}: ${s.score}`).join('\n') : 'No high scores yet.';
-                })
-                .catch(error => {
-                    console.error('Leaderboard fetch error:', error);
-                    highScoresList.textContent = 'Error loading high scores. Check console for details.';
-                });
-        }
+            }
 
-        // Update and display local top 5 scores
-        function updateLocalScoresDisplay() {
-            localScoresList.textContent = localTopScores.length ? localTopScores.join('\n') : 'No local scores yet.';
-        }
+            // Update and display local top 5 scores
+            function updateLocalScoresDisplay() {
+                localScoresList.textContent = localTopScores.length ? localTopScores.join('\n') : 'No local scores yet.';
+            }
 
-        // Game loop
-        function gameLoop() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            // Game loop
+            function gameLoop() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            if (imagesLoaded < totalImages) {
-                ctx.fillStyle = 'black';
-                ctx.font = '24px Arial';
-                ctx.textAlign = 'center';
-                ctx.fillText('Loading...', canvas.width / 2, canvas.height / 2);
+                if (imagesLoaded < totalImages) {
+                    ctx.fillStyle = 'black';
+                    ctx.font = '24px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('Loading...', canvas.width / 2, canvas.height / 2);
+                    requestAnimationFrame(gameLoop);
+                    return;
+                }
+
+                drawGround();
+                drawDino();
+
+                if (!gameStarted && !gameOver) {
+                    ctx.fillStyle = 'black';
+                    ctx.font = '24px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('Press Space or Tap to Start', canvas.width / 2, canvas.height / 2);
+                    ctx.fillText('Hold Bottom-Right to Duck', canvas.width / 2, canvas.height / 2 + 30);
+                } else if (!gameOver) {
+                    frameCount++;
+                    updateDino();
+                    spawnObstacle();
+                    updateObstacles();
+                    speed += 0.0005;
+                    if (checkCollision()) {
+                        gameOver = true;
+                        gameOverDiv.style.display = 'block';
+                        saveHighScoreToFirebase();
+                    }
+                    for (let obstacle of obstacles) {
+                        drawObstacle(obstacle);
+                    }
+                }
+
+                scoreDisplay.textContent = score;
+                highScoreDisplay.textContent = highScore;
+
                 requestAnimationFrame(gameLoop);
-                return;
             }
 
-            drawGround();
-            drawDino();
-
-            if (!gameStarted && !gameOver) {
-                ctx.fillStyle = 'black';
-                ctx.font = '24px Arial';
-                ctx.textAlign = 'center';
-                ctx.fillText('Press Space or Tap to Start', canvas.width / 2, canvas.height / 2);
-                ctx.fillText('Hold Bottom-Right to Duck', canvas.width / 2, canvas.height / 2 + 30);
-            } else if (!gameOver) {
-                frameCount++;
-                updateDino();
-                spawnObstacle();
-                updateObstacles();
-                speed += 0.0005;
-                if (checkCollision()) {
-                    gameOver = true;
-                    gameOverDiv.style.display = 'block';
-                    saveHighScoreToFirebase(); // Auto-save high score
-                }
-                for (let obstacle of obstacles) {
-                    drawObstacle(obstacle);
-                }
-            }
-
-            scoreDisplay.textContent = score;
-            highScoreDisplay.textContent = highScore;
-
-            requestAnimationFrame(gameLoop);
-        }
-
-        // Start game loop and load high scores asynchronously
-        gameLoop();
-        loadHighScores();
-        updateLocalScoresDisplay();
+            // Start game loop and load high scores asynchronously
+            gameLoop();
+            loadHighScores();
+            updateLocalScoresDisplay();
+        };
     </script>
 </body>
 </html>
