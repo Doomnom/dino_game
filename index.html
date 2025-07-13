@@ -34,9 +34,9 @@
             font-size: 16px;
         }
     </style>
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js"></script>
-    <script>
+    <script type="module" src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js"></script>
+    <script type="module" src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js"></script>
+    <script type="module">
         // Firebase configuration
         const firebaseConfig = {
             apiKey: "AIzaSyAJCkPYWK3mDTsbEw_VDgh30PbY7Z3BhFg",
@@ -48,37 +48,18 @@
             appId: "1:401593443465:web:492e13e480e0488d3d1258",
             measurementId: "G-JS0KZL2BT5"
         };
-    </script>
-</head>
-<body>
-    <canvas id="gameCanvas" width="800" height="400"></canvas>
-    <div id="gameOver">Game Over! Press Space or Tap to Restart</div>
-    <div id="scorePanel">
-        High Score: <span id="highScore">0</span><br>
-        Score: <span id="score">0</span>
-    </div>
-    <div id="leaderboard">
-        <h3>Global Top 5 High Scores</h3>
-        <pre id="highScoresList"></pre>
-    </div>
-    <div id="localTopScores">
-        <h4>Your Top 5 Scores</h4>
-        <pre id="localScoresList"></pre>
-    </div>
-    <script>
-        window.onload = function() {
-            // Ensure Firebase is loaded and initialize
-            if (typeof firebase === 'undefined') {
-                console.error('Firebase is not loaded. Check your internet connection or script sources.');
-                gameLoop(); // Start game even if Firebase fails
-                return;
-            }
+
+        // Wait for Firebase to load
+        window.onload = async function() {
+            let firebaseInitialized = false;
             try {
-                firebase.initializeApp(firebaseConfig);
+                // Import Firebase dynamically
+                const { initializeApp } = await import('https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js');
+                const { getDatabase } = await import('https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js');
+                initializeApp(firebaseConfig);
+                firebaseInitialized = true;
             } catch (error) {
                 console.error('Firebase initialization error:', error);
-                gameLoop(); // Start game even if Firebase initialization fails
-                return;
             }
 
             const canvas = document.getElementById('gameCanvas');
@@ -377,14 +358,15 @@
             });
 
             // Automatically save high score to Firebase
-            function saveHighScoreToFirebase() {
-                if (highScore > 0) {
+            async function saveHighScoreToFirebase() {
+                if (firebaseInitialized && highScore > 0) {
+                    const { getDatabase, ref, push, serverTimestamp } = await import('https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js');
                     const scoreEntry = {
                         name: 'Anonymous',
                         score: highScore,
-                        timestamp: firebase.database.ServerValue.TIMESTAMP
+                        timestamp: serverTimestamp()
                     };
-                    firebase.database().ref('highscores').push(scoreEntry)
+                    push(ref(getDatabase(), 'highscores'), scoreEntry)
                         .then(() => {
                             loadHighScores();
                         })
@@ -409,20 +391,20 @@
             }
 
             // Load and display global high scores
-            function loadHighScores() {
-                firebase.database().ref('highscores').orderByChild('score').limitToLast(5)
-                    .once('value')
-                    .then(snapshot => {
+            async function loadHighScores() {
+                if (firebaseInitialized) {
+                    const { getDatabase, ref, onValue } = await import('https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js');
+                    onValue(ref(getDatabase(), 'highscores'), (snapshot) => {
                         const scores = [];
                         snapshot.forEach(childSnapshot => {
                             scores.unshift(childSnapshot.val());
                         });
                         highScoresList.textContent = scores.length ? scores.map(s => `${s.name}: ${s.score}`).join('\n') : 'No high scores yet.';
-                    })
-                    .catch(error => {
+                    }, (error) => {
                         console.error('Leaderboard fetch error:', error);
                         highScoresList.textContent = 'Error loading high scores. Check console for details.';
                     });
+                }
             }
 
             // Update and display local top 5 scores
@@ -473,3 +455,4 @@
     </script>
 </body>
 </html>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'95ea39566c8d6186',t:'MTc1MjQyNDg0NS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script>
