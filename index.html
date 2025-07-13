@@ -386,7 +386,10 @@
         function loadHighScores() {
             fetch('https://doomnom.github.io/dino_game/highscores.txt')
                 .then(response => {
-                    if (!response.ok) throw new Error('File not found');
+                    if (!response.ok) {
+                        highScoresList.textContent = 'No high scores available yet. Ask the admin to create highscores.txt.';
+                        return Promise.reject(new Error('File not found or inaccessible'));
+                    }
                     return response.text();
                 })
                 .then(text => {
@@ -398,8 +401,8 @@
                     highScoresList.textContent = scores.length ? scores.join('\n') : 'No high scores yet.';
                 })
                 .catch(error => {
-                    highScoresList.textContent = 'No high scores available yet. Ask the admin to create highscores.txt.';
-                    console.error('Error:', error);
+                    console.error('Leaderboard fetch error:', error);
+                    highScoresList.textContent = 'Error loading high scores. Check console for details.';
                 });
         }
 
@@ -452,10 +455,10 @@
             requestAnimationFrame(gameLoop);
         }
 
-        // Start game loop and load high scores
-        loadHighScores();
+        // Start game loop and load high scores asynchronously
+        gameLoop(); // Start game loop immediately
+        loadHighScores(); // Load high scores in background
         updateLocalScoresDisplay();
-        gameLoop();
     </script>
 </body>
 </html>
