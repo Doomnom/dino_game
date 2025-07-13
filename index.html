@@ -147,27 +147,36 @@
                 if (Array.isArray(images[key])) {
                     totalImages += images[key].length;
                     images[key].forEach(img => {
-                        img.onload = () => imagesLoaded++;
+                        img.onload = () => {
+                            imagesLoaded++;
+                            if (imagesLoaded === totalImages) gameLoop(); // Start game once all images are loaded
+                        };
                         img.onerror = () => {
                             imagesLoaded++;
                             useFallbackShapes = true;
+                            if (imagesLoaded === totalImages) gameLoop(); // Start with fallbacks if errors occur
                         };
                     });
                 } else {
                     totalImages++;
-                    images[key].onload = () => imagesLoaded++;
+                    images[key].onload = () => {
+                        imagesLoaded++;
+                        if (imagesLoaded === totalImages) gameLoop();
+                    };
                     images[key].onerror = () => {
                         imagesLoaded++;
                         useFallbackShapes = true;
+                        if (imagesLoaded === totalImages) gameLoop();
                     };
                 }
             }
 
-            // Timeout to force fallback after 5 seconds
+            // Timeout to force fallback and start game if images fail to load
             setTimeout(() => {
                 if (imagesLoaded < totalImages) {
                     useFallbackShapes = true;
                     imagesLoaded = totalImages;
+                    gameLoop();
                 }
             }, loadTimeout);
 
@@ -423,15 +432,6 @@
             function gameLoop() {
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-                if (imagesLoaded < totalImages) {
-                    ctx.fillStyle = 'black';
-                    ctx.font = '24px Arial';
-                    ctx.textAlign = 'center';
-                    ctx.fillText('Loading...', canvas.width / 2, canvas.height / 2);
-                    requestAnimationFrame(gameLoop);
-                    return;
-                }
-
                 drawGround();
                 drawDino();
 
@@ -464,7 +464,7 @@
             }
 
             // Start game loop and load high scores asynchronously
-            gameLoop();
+            if (imagesLoaded >= totalImages) gameLoop(); // Start immediately if images are already loaded
             loadHighScores();
             updateLocalScoresDisplay();
         };
