@@ -341,6 +341,10 @@
 
             // Input handling - Touch
             document.addEventListener('touchstart', function(event) {
+                // Ignore touches on the score submission form
+                if (event.target.closest('#submitScore')) {
+                    return;
+                }
                 event.preventDefault(); // Prevent scrolling or zooming
                 const touch = event.touches[0];
                 const rect = canvas.getBoundingClientRect();
@@ -366,6 +370,10 @@
             });
 
             document.addEventListener('touchend', function(event) {
+                // Ignore touches on the score submission form
+                if (event.target.closest('#submitScore')) {
+                    return;
+                }
                 event.preventDefault();
                 dino.isDucking = false; // Stop ducking when touch ends
             });
