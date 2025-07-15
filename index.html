@@ -39,11 +39,46 @@
             display: none; /* Hides the error message by default */
             text-align: center; /* Centers the error message */
         }
+        .login-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: rgba(0, 0, 0, 0.5);
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            z-index: 1000;
+        }
+        .login-form {
+            background-color: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+        }
+        .login-form input {
+            display: block;
+            margin: 10px auto;
+            padding: 5px;
+        }
+        .login-form button {
+            padding: 5px 15px;
+        }
     </style>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script> <!-- Loads Firebase app compatibility script -->
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script> <!-- Loads Firebase database compatibility script -->
 </head>
 <body>
+    <div id="login-container" class="login-container">
+        <div class="login-form">
+            <h2>Login</h2>
+            <input type="text" id="username" placeholder="Username">
+            <input type="password" id="password" placeholder="Password">
+            <button onclick="login()">Login</button>
+            <p id="loginError" style="color: red; display: none;">Invalid credentials</p>
+        </div>
+    </div>
     <canvas id="gameCanvas"></canvas> <!-- Canvas element for rendering the game -->
     <div id="gameOver">Game Over! Press Space or Tap to Restart</div> <!-- Displays game over message and restart instructions -->
     <div id="scorePanel">
@@ -60,7 +95,31 @@
         <ul id="highScoresList"></ul> <!-- Unordered list to display top 5 high scores -->
     </div>
     <script>
+        let isLoggedIn = false;
+
+        function login() {
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            // Simple hardcoded credentials for demo (replace with secure authentication in production)
+            if (username === 'player' && password === '1234') {
+                isLoggedIn = true;
+                document.getElementById('login-container').style.display = 'none';
+                document.getElementById('gameCanvas').style.display = 'block';
+                document.getElementById('scorePanel').style.display = 'block';
+                loadImages(); // Start the game after login
+                loadHighScores();
+            } else {
+                document.getElementById('loginError').style.display = 'block';
+            }
+        }
+
         document.addEventListener('DOMContentLoaded', () => {
+            // Hide game content until login
+            document.getElementById('gameCanvas').style.display = 'none';
+            document.getElementById('scorePanel').style.display = 'none';
+            document.getElementById('submitScore').style.display = 'none';
+            document.getElementById('leaderboard').style.display = 'none';
+
             // Firebase configuration object with API credentials and settings
             const firebaseConfig = {
                 apiKey: "AIzaSyAJCkPYWK3mDTsbEw_VDgh30PbY7Z3BhFg",
@@ -265,6 +324,7 @@
             // Input handling
             document.addEventListener('keydown', (event) => {
                 // Handles keyboard input for game control
+                if (!isLoggedIn) return;
                 if (event.code === 'Space' && !gameState.gameOver && !gameState.gameStarted) gameState.gameStarted = true;
                 else if (event.code === 'Space' && !gameState.gameOver && gameState.gameStarted && !gameState.dino.isJumping) {
                     gameState.dino.vy = gameState.dino.jumpPower;
@@ -276,11 +336,13 @@
 
             document.addEventListener('keyup', (event) => {
                 // Handles key release to stop ducking
+                if (!isLoggedIn) return;
                 if (event.code === 'ArrowDown') gameState.dino.isDucking = false;
             });
 
             document.addEventListener('touchstart', (event) => {
                 // Handles touch input for game control
+                if (!isLoggedIn) return;
                 if (event.target.closest('#submitScore')) return;
                 event.preventDefault();
                 const touch = event.touches[0];
@@ -301,6 +363,7 @@
 
             document.addEventListener('touchend', (event) => {
                 // Handles touch end to stop ducking
+                if (!isLoggedIn) return;
                 if (event.target.closest('#submitScore')) return;
                 event.preventDefault();
                 gameState.dino.isDucking = false;
@@ -309,6 +372,7 @@
             // Game management
             function resetGame() {
                 // Resets the game state to initial conditions
+                if (!isLoggedIn) return;
                 gameState.obstacles = [];
                 gameState.score = 0;
                 gameState.speed = 5;
@@ -326,6 +390,7 @@
 
             function submitScore() {
                 // Submits the high score to Firebase with the player's name
+                if (!isLoggedIn) return;
                 const name = elements.playerNameInput.value.trim();
                 if (!name) {
                     elements.errorMessage.textContent = 'Please enter a name';
@@ -353,6 +418,7 @@
 
             function loadHighScores() {
                 // Fetches and displays the top 5 high scores from Firebase
+                if (!isLoggedIn) return;
                 firebase.database().ref('highscores').orderByChild('score').limitToLast(5)
                     .once('value')
                     .then(snapshot => {
@@ -382,6 +448,7 @@
             // Game loop
             function gameLoop() {
                 // Main game loop that updates and renders the game
+                if (!isLoggedIn) return;
                 console.log('Game loop running');
                 ctx.clearRect(0, 0, canvas.width, canvas.height); // Clears the canvas
 
@@ -422,9 +489,8 @@
                 requestAnimationFrame(gameLoop); // Requests next animation frame
             }
 
-            loadImages(); // Initiates image loading
-            loadHighScores(); // Loads initial high scores
+            // Initial load is handled by login
         });
     </script>
-<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'95f9077abe90673d',t:'MTc1MjU4MDA5MC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'95f9077abe90673d',t:'MTc1MjU4MDA5MC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'95f914574fdc6732',t:'MTc1MjU4MDYxNi4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
