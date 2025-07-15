@@ -193,7 +193,7 @@
                         ctx.fillRect(gameState.dino.x, gameState.dino.y, gameState.dino.width, gameState.dino.height);
                     }
                 } else {
-                    const frame = Math.floor(gameState.frameCount / 15) % gameState.images.dino_run.length; // Slowed down to /15
+                    const frame = Math.floor(gameState.frameCount / 10) % gameState.images.dino_run.length; // Reverted to /10 for smoother animation
                     if (gameState.dino.isDucking) {
                         ctx.drawImage(gameState.images.dino_duck, gameState.dino.x, gameState.dino.y + 20, gameState.dino.width, gameState.dino.height / 2);
                     } else if (gameState.dino.isJumping) {
@@ -224,7 +224,7 @@
                         ctx.fill();
                     }
                 } else {
-                    const frame = Math.floor(gameState.frameCount / 15) % (obstacle.type === 'tentacle' ? gameState.images.tentacle.length : obstacle.type === 'sawblade' ? gameState.images.sawblade.length : gameState.images.drone.length); // Slowed down to /15 for tentacles
+                    const frame = Math.floor(gameState.frameCount / 10) % (obstacle.type === 'tentacle' ? gameState.images.tentacle.length : obstacle.type === 'sawblade' ? gameState.images.sawblade.length : gameState.images.drone.length); // Reverted to /10
                     if (obstacle.type === 'tentacle') {
                         ctx.drawImage(gameState.images.tentacle[frame], obstacle.x, obstacle.y, obstacle.width, obstacle.height);
                     } else if (obstacle.type === 'sawblade') {
@@ -246,13 +246,13 @@
                     let type, yPos;
                     const rand = Math.random();
                     type = rand < 0.33 ? 'tentacle' : rand < 0.66 ? 'sawblade' : 'drone';
-                    // Adjust yPos to ensure jumpable/duckable heights
+                    // Random yPos with constraints for playability
                     if (type === 'tentacle') {
-                        yPos = 280; // Low enough to jump over (max jump height ~60px above ground)
+                        yPos = 280 + Math.floor(Math.random() * 40); // 280-320, jumpable
                     } else if (type === 'sawblade') {
-                        yPos = 310; // High enough to duck under
+                        yPos = 200 + Math.floor(Math.random() * 80); // 200-280, duckable
                     } else { // drone
-                        yPos = Math.random() < 0.5 ? 280 : 310; // Randomize but within jump/duck range
+                        yPos = 200 + Math.floor(Math.random() * 80); // 200-280, mix of jump/duck
                     }
                     let obstacle = {
                         x: canvas.width,
@@ -282,10 +282,11 @@
                 for (let obstacle of gameState.obstacles) {
                     let dinoHeight = gameState.dino.isDucking ? gameState.dino.height / 2 : gameState.dino.height;
                     let dinoY = gameState.dino.isDucking ? gameState.dino.y + 20 : gameState.dino.y;
-                    if (gameState.dino.x < obstacle.x + obstacle.width &&
-                        gameState.dino.x + gameState.dino.width > obstacle.x &&
-                        dinoY < obstacle.y + obstacle.height &&
-                        dinoY + dinoHeight > obstacle.y) {
+                    // Adjust collision to be more forgiving
+                    if (gameState.dino.x + gameState.dino.width > obstacle.x &&
+                        gameState.dino.x < obstacle.x + obstacle.width &&
+                        dinoY + dinoHeight > obstacle.y &&
+                        dinoY < obstacle.y + obstacle.height) {
                         return true;
                     }
                 }
