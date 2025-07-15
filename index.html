@@ -135,12 +135,8 @@
                 document.getElementById('submitScore').style.display = 'none';
                 document.getElementById('leaderboard').style.display = 'block';
                 document.getElementById('logoutButton').style.display = 'block';
-                if (typeof loadImages === 'function') {
-                    loadImages(); // Start the game after login
-                }
-                if (typeof loadHighScores === 'function') {
-                    loadHighScores();
-                }
+                loadImages(); // Start the game after login
+                loadHighScores();
             } else {
                 document.getElementById('loginError').style.display = 'block';
             }
@@ -179,6 +175,52 @@
                     drone: [new Image(), new Image()]
                 }
             };
+        }
+
+        // Global functions moved outside DOMContentLoaded
+        const imageSources = {
+            dino_run: ['https://doomnom.github.io/dino_game/sprites/dino_run1.png', 'https://doomnom.github.io/dino_game/sprites/dino_run2.png', 'https://doomnom.github.io/dino_game/sprites/dino_run3.png'],
+            dino_jump: 'https://doomnom.github.io/dino_game/sprites/dino_jump.png',
+            dino_duck: 'https://doomnom.github.io/dino_game/sprites/dino_duck.png',
+            tentacle: ['https://doomnom.github.io/dino_game/sprites/tentacle1.png', 'https://doomnom.github.io/dino_game/sprites/tentacle2.png'],
+            sawblade: ['https://doomnom.github.io/dino_game/sprites/sawblade1.png', 'https://doomnom.github.io/dino_game/sprites/sawblade2.png', 'https://doomnom.github.io/dino_game/sprites/sawblade3.png'],
+            drone: ['https://doomnom.github.io/dino_game/sprites/drone1.png', 'https://doomnom.github.io/dino_game/sprites/drone2.png']
+        };
+
+        window.loadImages = function() {
+            for (let [key, src] of Object.entries(imageSources)) {
+                if (Array.isArray(src)) {
+                    gameState.totalImages += src.length;
+                    src.forEach((url, index) => {
+                        gameState.images[key][index].onload = () => handleImageLoad();
+                        gameState.images[key][index].onerror = () => handleImageError();
+                        gameState.images[key][index].src = url;
+                    });
+                } else {
+                    gameState.totalImages++;
+                    gameState.images[key].onload = () => handleImageLoad();
+                    gameState.images[key].onerror = () => handleImageError();
+                    gameState.images[key].src = src;
+                }
+            }
+            setTimeout(() => {
+                if (gameState.imagesLoaded < gameState.totalImages) {
+                    gameState.useFallbackShapes = true;
+                    gameState.imagesLoaded = gameState.totalImages;
+                    gameLoop();
+                }
+            }, gameState.loadTimeout);
+        };
+
+        function handleImageLoad() {
+            gameState.imagesLoaded++;
+            if (gameState.imagesLoaded === gameState.totalImages) gameLoop();
+        }
+
+        function handleImageError() {
+            gameState.imagesLoaded++;
+            gameState.useFallbackShapes = true;
+            if (gameState.imagesLoaded === gameState.totalImages) gameLoop();
         }
 
         document.addEventListener('DOMContentLoaded', () => {
@@ -234,42 +276,6 @@
                     drone: [new Image(), new Image()]
                 }
             };
-
-            window.loadImages = function() { // Make loadImages globally accessible
-                for (let [key, src] of Object.entries(imageSources)) {
-                    if (Array.isArray(src)) {
-                        gameState.totalImages += src.length;
-                        src.forEach((url, index) => {
-                            gameState.images[key][index].onload = () => handleImageLoad();
-                            gameState.images[key][index].onerror = () => handleImageError();
-                            gameState.images[key][index].src = url;
-                        });
-                    } else {
-                        gameState.totalImages++;
-                        gameState.images[key].onload = () => handleImageLoad();
-                        gameState.images[key].onerror = () => handleImageError();
-                        gameState.images[key].src = src;
-                    }
-                }
-                setTimeout(() => {
-                    if (gameState.imagesLoaded < gameState.totalImages) {
-                        gameState.useFallbackShapes = true;
-                        gameState.imagesLoaded = gameState.totalImages;
-                        gameLoop();
-                    }
-                }, gameState.loadTimeout);
-            };
-
-            function handleImageLoad() {
-                gameState.imagesLoaded++;
-                if (gameState.imagesLoaded === gameState.totalImages) gameLoop();
-            }
-
-            function handleImageError() {
-                gameState.imagesLoaded++;
-                gameState.useFallbackShapes = true;
-                if (gameState.imagesLoaded === gameState.totalImages) gameLoop();
-            }
 
             function drawDino() {
                 if (gameState.useFallbackShapes) {
