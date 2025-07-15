@@ -63,14 +63,14 @@
         document.addEventListener('DOMContentLoaded', function() {
             // Firebase config (replace with actual values for testing)
             const firebaseConfig = {
-                aapiKey: "AIzaSyAJCkPYWK3mDTsbEw_VDgh30PbY7Z3BhFg",
-                authDomain: "dinogame-r3dnax.firebaseapp.com",
-                databaseURL: "https://dinogame-r3dnax-default-rtdb.europe-west1.firebasedatabase.app",
-                projectId: "dinogame-r3dnax",
-                storageBucket: "dinogame-r3dnax.firebasestorage.app",
-                messagingSenderId: "401593443465",
-                appId: "1:401593443465:web:492e13e480e0488d3d1258",
-                measurementId: "G-JS0KZL2BT5"
+                apiKey: "YOUR_API_KEY",
+                authDomain: "YOUR_AUTH_DOMAIN",
+                databaseURL: "YOUR_DATABASE_URL",
+                projectId: "YOUR_PROJECT_ID",
+                storageBucket: "YOUR_STORAGE_BUCKET",
+                messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+                appId: "YOUR_APP_ID",
+                measurementId: "YOUR_MEASUREMENT_ID"
             };
             firebase.initializeApp(firebaseConfig);
 
@@ -558,52 +558,15 @@
                     });
             }
 
-           function gameLoop(timestamp) {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+            // Game loop
+            function gameLoop(timestamp) {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    if (gameState.imagesLoaded < gameState.totalImages) {
-        ctx.fillStyle = 'black';
-        ctx.font = '24px Arial';
-        ctx.textAlign = 'center';
-        ctx.fillText(`Loading... ${Math.round((gameState.imagesLoaded / gameState.totalImages) * 100)}%`, canvas.width / 2, canvas.height / 2);
-        requestAnimationFrame(gameLoop);
-        return;
-    }
-
-    // Initialize image data for pixel-perfect collision if not done
-    if (!gameState.imageDataReady) {
-        createImageData();
-        gameState.imageDataReady = true;
-    }
-
-    drawGround();
-    drawDino(timestamp);
-
-    if (!gameState.gameStarted && !gameState.gameOver) {
-        ctx.fillStyle = 'black';
-        ctx.font = '24px Arial';
-        ctx.textAlign = 'center';
-        ctx.fillText('Press Space or Tap to Start', canvas.width / 2, canvas.height / 2);
-        ctx.fillText('Hold Bottom-Right to Duck', canvas.width / 2, canvas.height / 2 + 30);
-    } else if (!gameState.gameOver) {
-        gameState.frameCount++;
-        updateDino();
-        spawnObstacle();
-        updateObstacles();
-        gameState.speed += 0.0005;
-        if (checkCollision(timestamp)) {
-            gameState.gameOver = true;
-            gameOverDiv.style.display = 'block';
-            submitScoreDiv.style.display = 'block';
-        }
-        for (let obstacle of gameState.obstacles) {
-            drawObstacle(obstacle, timestamp);
-        }
-    }
-
-    scoreDisplay.textContent = gameState.score;
-    highScoreDisplay.textContent = gameState.highScore;
-
-    requestAnimationFrame(gameLoop);
-           }
+                if (gameState.imagesLoaded < gameState.totalImages) {
+                    ctx.fillStyle = 'black';
+                    ctx.font = '24px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(`Loading... ${Math.round((gameState.imagesLoaded / gameState.totalImages) * 100)}%`, canvas.width / 2, canvas.height / 2);
+                }
+            }
         })
