@@ -243,25 +243,35 @@
             // Game logic
             function spawnObstacle() {
                 if (gameState.frameCount % (60 + Math.floor(Math.random() * 60)) === 0) {
-                    let type, yPos;
-                    const rand = Math.random();
-                    type = rand < 0.33 ? 'tentacle' : rand < 0.66 ? 'sawblade' : 'drone';
-                    // Random yPos with constraints for playability
-                    if (type === 'tentacle') {
-                        yPos = 280 + Math.floor(Math.random() * 40); // 280-320, jumpable
-                    } else if (type === 'sawblade') {
-                        yPos = 200 + Math.floor(Math.random() * 80); // 200-280, duckable
-                    } else { // drone
-                        yPos = 200 + Math.floor(Math.random() * 80); // 200-280, mix of jump/duck
+                    // Check if last obstacle is far enough
+                    let canSpawn = true;
+                    if (gameState.obstacles.length > 0) {
+                        let lastObstacle = gameState.obstacles[gameState.obstacles.length - 1];
+                        if (canvas.width - lastObstacle.x < 100) { // Minimum 100px spacing
+                            canSpawn = false;
+                        }
                     }
-                    let obstacle = {
-                        x: canvas.width,
-                        y: yPos,
-                        width: type === 'tentacle' ? 20 : 30,
-                        height: type === 'tentacle' ? 40 : 30,
-                        type: type
-                    };
-                    gameState.obstacles.push(obstacle);
+                    if (canSpawn) {
+                        let type, yPos;
+                        const rand = Math.random();
+                        type = rand < 0.33 ? 'tentacle' : rand < 0.66 ? 'sawblade' : 'drone';
+                        // Random yPos with constraints for playability
+                        if (type === 'tentacle') {
+                            yPos = 280 + Math.floor(Math.random() * 40); // 280-320, jumpable
+                        } else if (type === 'sawblade') {
+                            yPos = 200 + Math.floor(Math.random() * 80); // 200-280, duckable
+                        } else { // drone
+                            yPos = 200 + Math.floor(Math.random() * 80); // 200-280, mix of jump/duck
+                        }
+                        let obstacle = {
+                            x: canvas.width,
+                            y: yPos,
+                            width: type === 'tentacle' ? 20 : 30,
+                            height: type === 'tentacle' ? 40 : 30,
+                            type: type
+                        };
+                        gameState.obstacles.push(obstacle);
+                    }
                 }
             }
 
