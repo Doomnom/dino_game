@@ -193,12 +193,12 @@
                         ctx.fillRect(gameState.dino.x, gameState.dino.y, gameState.dino.width, gameState.dino.height);
                     }
                 } else {
-                    const frame = Math.floor(gameState.frameCount / 10) % gameState.images.dino_run.length; // Reverted to /10 for smoother animation
                     if (gameState.dino.isDucking) {
                         ctx.drawImage(gameState.images.dino_duck, gameState.dino.x, gameState.dino.y + 20, gameState.dino.width, gameState.dino.height / 2);
                     } else if (gameState.dino.isJumping) {
                         ctx.drawImage(gameState.images.dino_jump, gameState.dino.x, gameState.dino.y, gameState.dino.width, gameState.dino.height);
                     } else {
+                        const frame = Math.floor(gameState.frameCount / 10) % gameState.images.dino_run.length;
                         ctx.drawImage(gameState.images.dino_run[frame], gameState.dino.x, gameState.dino.y, gameState.dino.width, gameState.dino.height);
                     }
                 }
