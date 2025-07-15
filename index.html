@@ -61,16 +61,17 @@
     </div>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            // Firebase config (replace with actual values for testing)
+            // Firebase config (replace with server-side proxy in production)
             const firebaseConfig = {
-                apiKey: "YOUR_API_KEY",
-                authDomain: "YOUR_AUTH_DOMAIN",
-                databaseURL: "YOUR_DATABASE_URL",
-                projectId: "YOUR_PROJECT_ID",
-                storageBucket: "YOUR_STORAGE_BUCKET",
-                messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-                appId: "YOUR_APP_ID",
-                measurementId: "YOUR_MEASUREMENT_ID"
+                // Placeholder: Move to server-side or secure with Firebase Rules
+                apiKey: "AIzaSyAJCkPYWK3mDTsbEw_VDgh30PbY7Z3BhFg",
+                authDomain: "dinogame-r3dnax.firebaseapp.com",
+                databaseURL: "https://dinogame-r3dnax-default-rtdb.europe-west1.firebasedatabase.app",
+                projectId: "dinogame-r3dnax",
+                storageBucket: "dinogame-r3dnax.firebasestorage.app",
+                messagingSenderId: "401593443465",
+                appId: "1:401593443465:web:492e13e480e0488d3d1258",
+                measurementId: "G-JS0KZL2BT5"
             };
             firebase.initializeApp(firebaseConfig);
 
@@ -120,16 +121,7 @@
                     tentacle: [new Image(), new Image()],
                     sawblade: [new Image(), new Image(), new Image()],
                     drone: [new Image(), new Image()]
-                },
-                imageData: {
-                    dino_run: [],
-                    dino_jump: null,
-                    dino_duck: null,
-                    tentacle: [],
-                    sawblade: [],
-                    drone: []
-                },
-                imageDataReady: false
+                }
             };
 
             // Image sources
@@ -151,18 +143,34 @@
                 if (Array.isArray(gameState.images[key])) {
                     gameState.totalImages += gameState.images[key].length;
                     gameState.images[key].forEach(img => {
-                        img.onload = () => gameState.imagesLoaded++;
+                        img.onload = () => {
+                            gameState.imagesLoaded++;
+                            if (gameState.imagesLoaded === gameState.totalImages) {
+                                gameLoop(); // Start game loop when all images are loaded
+                            }
+                        };
                         img.onerror = () => {
                             gameState.imagesLoaded++;
                             gameState.useFallbackShapes = true;
+                            if (gameState.imagesLoaded === gameState.totalImages) {
+                                gameLoop(); // Start game loop even if some images fail
+                            }
                         };
                     });
                 } else {
                     gameState.totalImages++;
-                    gameState.images[key].onload = () => gameState.imagesLoaded++;
+                    gameState.images[key].onload = () => {
+                        gameState.imagesLoaded++;
+                        if (gameState.imagesLoaded === gameState.totalImages) {
+                            gameLoop(); // Start game loop when all images are loaded
+                        }
+                    };
                     gameState.images[key].onerror = () => {
                         gameState.imagesLoaded++;
                         gameState.useFallbackShapes = true;
+                        if (gameState.imagesLoaded === gameState.totalImages) {
+                            gameLoop(); // Start game loop even if some images fail
+                        }
                     };
                 }
             }
@@ -171,66 +179,12 @@
                 if (gameState.imagesLoaded < gameState.totalImages) {
                     gameState.useFallbackShapes = true;
                     gameState.imagesLoaded = gameState.totalImages;
+                    gameLoop(); // Ensure game starts after timeout
                 }
             }, gameState.loadTimeout);
 
-            // Create image data for pixel-perfect collision
-            function createImageData() {
-                if (gameState.useFallbackShapes) return;
-                // Dino run
-                gameState.imageData.dino_run = gameState.images.dino_run.map(img => {
-                    const offscreen = document.createElement('canvas');
-                    offscreen.width = gameState.dino.width;
-                    offscreen.height = gameState.dino.height;
-                    const ctx = offscreen.getContext('2d');
-                    ctx.drawImage(img, 0, 0, offscreen.width, offscreen.height);
-                    return ctx.getImageData(0, 0, offscreen.width, offscreen.height);
-                });
-                // Dino jump
-                const offscreenJump = document.createElement('canvas');
-                offscreenJump.width = gameState.dino.width;
-                offscreenJump.height = gameState.dino.height;
-                const ctxJump = offscreenJump.getContext('2d');
-                ctxJump.drawImage(gameState.images.dino_jump, 0, 0, offscreenJump.width, offscreenJump.height);
-                gameState.imageData.dino_jump = ctxJump.getImageData(0, 0, offscreenJump.width, offscreenJump.height);
-                // Dino duck
-                const offscreenDuck = document.createElement('canvas');
-                offscreenDuck.width = gameState.dino.width;
-                offscreenDuck.height = gameState.dino.height / 2;
-                const ctxDuck = offscreenDuck.getContext('2d');
-                ctxDuck.drawImage(gameState.images.dino_duck, 0, 0, offscreenDuck.width, offscreenDuck.height);
-                gameState.imageData.dino_duck = ctxDuck.getImageData(0, 0, offscreenDuck.width, offscreenDuck.height);
-                // Tentacles
-                gameState.imageData.tentacle = gameState.images.tentacle.map(img => {
-                    const offscreen = document.createElement('canvas');
-                    offscreen.width = 20;
-                    offscreen.height = 40;
-                    const ctx = offscreen.getContext('2d');
-                    ctx.drawImage(img, 0, 0, offscreen.width, offscreen.height);
-                    return ctx.getImageData(0, 0, offscreen.width, offscreen.height);
-                });
-                // Sawblades
-                gameState.imageData.sawblade = gameState.images.sawblade.map(img => {
-                    const offscreen = document.createElement('canvas');
-                    offscreen.width = 30;
-                    offscreen.height = 30;
-                    const ctx = offscreen.getContext('2d');
-                    ctx.drawImage(img, 0, 0, offscreen.width, offscreen.height);
-                    return ctx.getImageData(0, 0, offscreen.width, offscreen.height);
-                });
-                // Drones
-                gameState.imageData.drone = gameState.images.drone.map(img => {
-                    const offscreen = document.createElement('canvas');
-                    offscreen.width = 30;
-                    offscreen.height = 30;
-                    const ctx = offscreen.getContext('2d');
-                    ctx.drawImage(img, 0, 0, offscreen.width, offscreen.height);
-                    return ctx.getImageData(0, 0, offscreen.width, offscreen.height);
-                });
-            }
-
             // Drawing functions
-            function drawDino(timestamp) {
+            function drawDino() {
                 if (gameState.useFallbackShapes) {
                     ctx.fillStyle = 'blue';
                     if (gameState.dino.isDucking) {
@@ -239,19 +193,18 @@
                         ctx.fillRect(gameState.dino.x, gameState.dino.y, gameState.dino.width, gameState.dino.height);
                     }
                 } else {
+                    const frame = Math.floor(gameState.frameCount / 10) % gameState.images.dino_run.length;
                     if (gameState.dino.isDucking) {
                         ctx.drawImage(gameState.images.dino_duck, gameState.dino.x, gameState.dino.y + 20, gameState.dino.width, gameState.dino.height / 2);
                     } else if (gameState.dino.isJumping) {
                         ctx.drawImage(gameState.images.dino_jump, gameState.dino.x, gameState.dino.y, gameState.dino.width, gameState.dino.height);
                     } else {
-                        const animationSpeed = 100; // ms per frame
-                        const frameIndex = Math.floor((timestamp / animationSpeed) % gameState.images.dino_run.length);
-                        ctx.drawImage(gameState.images.dino_run[frameIndex], gameState.dino.x, gameState.dino.y, gameState.dino.width, gameState.dino.height);
+                        ctx.drawImage(gameState.images.dino_run[frame], gameState.dino.x, gameState.dino.y, gameState.dino.width, gameState.dino.height);
                     }
                 }
             }
 
-            function drawObstacle(obstacle, timestamp) {
+            function drawObstacle(obstacle) {
                 if (gameState.useFallbackShapes) {
                     if (obstacle.type === 'tentacle') {
                         ctx.fillStyle = 'purple';
@@ -271,17 +224,14 @@
                         ctx.fill();
                     }
                 } else {
-                    const animationSpeed = 100; // ms per frame
-                    let frames;
+                    const frame = Math.floor(gameState.frameCount / 10) % (obstacle.type === 'tentacle' ? gameState.images.tentacle.length : obstacle.type === 'sawblade' ? gameState.images.sawblade.length : gameState.images.drone.length);
                     if (obstacle.type === 'tentacle') {
-                        frames = gameState.images.tentacle;
+                        ctx.drawImage(gameState.images.tentacle[frame], obstacle.x, obstacle.y, obstacle.width, obstacle.height);
                     } else if (obstacle.type === 'sawblade') {
-                        frames = gameState.images.sawblade;
+                        ctx.drawImage(gameState.images.sawblade[frame], obstacle.x, obstacle.y, obstacle.width, obstacle.height);
                     } else if (obstacle.type === 'drone') {
-                        frames = gameState.images.drone;
+                        ctx.drawImage(gameState.images.drone[frame], obstacle.x, obstacle.y, obstacle.width, obstacle.height);
                     }
-                    const frameIndex = Math.floor((timestamp / animationSpeed) % frames.length);
-                    ctx.drawImage(frames[frameIndex], obstacle.x, obstacle.y, obstacle.width, obstacle.height);
                 }
             }
 
@@ -327,82 +277,18 @@
                 }
             }
 
-            function checkCollision(timestamp) {
-                if (gameState.useFallbackShapes || !gameState.imageDataReady) {
-                    // Bounding box collision
-                    for (let obstacle of gameState.obstacles) {
-                        let dinoHeight = gameState.dino.isDucking ? gameState.dino.height / 2 : gameState.dino.height;
-                        let dinoY = gameState.dino.isDucking ? gameState.dino.y + 20 : gameState.dino.y;
-                        if (gameState.dino.x < obstacle.x + obstacle.width &&
-                            gameState.dino.x + gameState.dino.width > obstacle.x &&
-                            dinoY < obstacle.y + obstacle.height &&
-                            dinoY + dinoHeight > obstacle.y) {
-                            return true;
-                        }
+            function checkCollision() {
+                for (let obstacle of gameState.obstacles) {
+                    let dinoHeight = gameState.dino.isDucking ? gameState.dino.height / 2 : gameState.dino.height;
+                    let dinoY = gameState.dino.isDucking ? gameState.dino.y + 20 : gameState.dino.y;
+                    if (gameState.dino.x < obstacle.x + obstacle.width &&
+                        gameState.dino.x + gameState.dino.width > obstacle.x &&
+                        dinoY < obstacle.y + obstacle.height &&
+                        dinoY + dinoHeight > obstacle.y) {
+                        return true;
                     }
-                    return false;
-                } else {
-                    // Pixel-perfect collision
-                    for (let obstacle of gameState.obstacles) {
-                        let dinoTop = gameState.dino.isDucking ? gameState.dino.y + 20 : gameState.dino.y;
-                        let dinoHeight = gameState.dino.isDucking ? gameState.dino.height / 2 : gameState.dino.height;
-                        let dinoLeft = gameState.dino.x;
-                        let dinoRight = dinoLeft + gameState.dino.width;
-                        let dinoBottom = dinoTop + dinoHeight;
-                        let obsLeft = obstacle.x;
-                        let obsRight = obsLeft + obstacle.width;
-                        let obsTop = obstacle.y;
-                        let obsBottom = obsTop + obstacle.height;
-                        let overlapLeft = Math.max(dinoLeft, obsLeft);
-                        let overlapRight = Math.min(dinoRight, obsRight);
-                        let overlapTop = Math.max(dinoTop, obsTop);
-                        let overlapBottom = Math.min(dinoBottom, obsBottom);
-                        if (overlapLeft < overlapRight && overlapTop < overlapBottom) {
-                            // Get dino ImageData
-                            let dinoData;
-                            if (gameState.dino.isDucking) {
-                                dinoData = gameState.imageData.dino_duck;
-                            } else if (gameState.dino.isJumping) {
-                                dinoData = gameState.imageData.dino_jump;
-                            } else {
-                                const animationSpeed = 100;
-                                const frameIndex = Math.floor((timestamp / animationSpeed) % gameState.images.dino_run.length);
-                                dinoData = gameState.imageData.dino_run[frameIndex];
-                            }
-                            // Get obstacle ImageData
-                            let obsData;
-                            const animationSpeed = 100;
-                            let frames = gameState.imageData[obstacle.type];
-                            const frameIndex = Math.floor((timestamp / animationSpeed) % frames.length);
-                            obsData = frames[frameIndex];
-                            // Loop through overlap area
-                            for (let oy = Math.floor(overlapTop); oy < Math.ceil(overlapBottom); oy++) {
-                                for (let ox = Math.floor(overlapLeft); ox < Math.ceil(overlapRight); ox++) {
-                                    // Map to dino local coordinates
-                                    let dx = ox - dinoLeft;
-                                    let dy = oy - dinoTop;
-                                    if (dx >= 0 && dx < dinoData.width && dy >= 0 && dy < dinoData.height) {
-                                        let dinoIndex = (Math.floor(dy) * dinoData.width + Math.floor(dx)) * 4 + 3;
-                                        let dinoAlpha = dinoData.data[dinoIndex];
-                                        if (dinoAlpha > 0) {
-                                            // Map to obstacle local coordinates
-                                            let oxLocal = ox - obsLeft;
-                                            let oyLocal = oy - obsTop;
-                                            if (oxLocal >= 0 && oxLocal < obsData.width && oyLocal >= 0 && oyLocal < obsData.height) {
-                                                let obsIndex = (Math.floor(oyLocal) * obsData.width + Math.floor(oxLocal)) * 4 + 3;
-                                                let obsAlpha = obsData.data[obsIndex];
-                                                if (obsAlpha > 0) {
-                                                    return true;
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    return false;
                 }
+                return false;
             }
 
             function updateDino() {
@@ -559,7 +445,8 @@
             }
 
             // Game loop
-            function gameLoop(timestamp) {
+            function gameLoop() {
+                console.log('Game loop running'); // Debug log
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
 
                 if (gameState.imagesLoaded < gameState.totalImages) {
@@ -567,6 +454,44 @@
                     ctx.font = '24px Arial';
                     ctx.textAlign = 'center';
                     ctx.fillText(`Loading... ${Math.round((gameState.imagesLoaded / gameState.totalImages) * 100)}%`, canvas.width / 2, canvas.height / 2);
+                    requestAnimationFrame(gameLoop);
+                    return;
                 }
+
+                drawGround();
+                drawDino();
+
+                if (!gameState.gameStarted && !gameState.gameOver) {
+                    ctx.fillStyle = 'black';
+                    ctx.font = '24px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('Press Space or Tap to Start', canvas.width / 2, canvas.height / 2);
+                    ctx.fillText('Hold Bottom-Right to Duck', canvas.width / 2, canvas.height / 2 + 30);
+                } else if (!gameState.gameOver) {
+                    gameState.frameCount++;
+                    updateDino();
+                    spawnObstacle();
+                    updateObstacles();
+                    gameState.speed += 0.0005;
+                    if (checkCollision()) {
+                        gameState.gameOver = true;
+                        gameOverDiv.style.display = 'block';
+                        submitScoreDiv.style.display = 'block';
+                    }
+                    for (let obstacle of gameState.obstacles) {
+                        drawObstacle(obstacle);
+                    }
+                }
+
+                scoreDisplay.textContent = gameState.score;
+                highScoreDisplay.textContent = gameState.highScore;
+
+                requestAnimationFrame(gameLoop);
             }
-        })
+
+            gameLoop(); // Initial call to start the loop
+            loadHighScores();
+        });
+    </script>
+</body>
+</html>
