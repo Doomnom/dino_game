@@ -65,6 +65,11 @@
         .login-form button {
             padding: 5px 15px;
         }
+        #logoutButton {
+            display: none;
+            text-align: center;
+            margin-top: 10px;
+        }
     </style>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script> <!-- Loads Firebase app compatibility script -->
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script> <!-- Loads Firebase database compatibility script -->
@@ -94,8 +99,27 @@
         <h3>Global Top 5 High Scores</h3> <!-- Heading for the leaderboard -->
         <ul id="highScoresList"></ul> <!-- Unordered list to display top 5 high scores -->
     </div>
+    <div id="logoutButton"><button onclick="logout()">Logout</button></div>
     <script>
-        let isLoggedIn = false;
+        let isLoggedIn = localStorage.getItem('isLoggedIn') === 'true'; // Check if user is already logged in
+
+        // Show login screen or game based on login state
+        if (isLoggedIn) {
+            document.getElementById('login-container').style.display = 'none';
+            document.getElementById('gameCanvas').style.display = 'block';
+            document.getElementById('scorePanel').style.display = 'block';
+            document.getElementById('submitScore').style.display = 'none';
+            document.getElementById('leaderboard').style.display = 'block';
+            document.getElementById('logoutButton').style.display = 'block';
+            loadImages();
+            loadHighScores();
+        } else {
+            document.getElementById('gameCanvas').style.display = 'none';
+            document.getElementById('scorePanel').style.display = 'none';
+            document.getElementById('submitScore').style.display = 'none';
+            document.getElementById('leaderboard').style.display = 'none';
+            document.getElementById('logoutButton').style.display = 'none';
+        }
 
         // Declare functions in global scope to ensure accessibility
         function login() {
@@ -104,29 +128,56 @@
             // Simple hardcoded credentials for demo (replace with secure authentication in production)
             if (username === 'player' && password === '1234') {
                 isLoggedIn = true;
+                localStorage.setItem('isLoggedIn', 'true'); // Store login state
                 document.getElementById('login-container').style.display = 'none';
                 document.getElementById('gameCanvas').style.display = 'block';
                 document.getElementById('scorePanel').style.display = 'block';
-                document.getElementById('submitScore').style.display = 'none'; // Hide submit score until game over
+                document.getElementById('submitScore').style.display = 'none';
                 document.getElementById('leaderboard').style.display = 'block';
-                if (typeof loadImages === 'function') {
-                    loadImages(); // Start the game after login
-                }
-                if (typeof loadHighScores === 'function') {
-                    loadHighScores();
-                }
+                document.getElementById('logoutButton').style.display = 'block';
+                loadImages(); // Start the game after login
+                loadHighScores();
             } else {
                 document.getElementById('loginError').style.display = 'block';
             }
         }
 
-        document.addEventListener('DOMContentLoaded', () => {
-            // Hide game content until login
+        function logout() {
+            isLoggedIn = false;
+            localStorage.removeItem('isLoggedIn'); // Clear login state
+            document.getElementById('login-container').style.display = 'block';
             document.getElementById('gameCanvas').style.display = 'none';
             document.getElementById('scorePanel').style.display = 'none';
             document.getElementById('submitScore').style.display = 'none';
             document.getElementById('leaderboard').style.display = 'none';
+            document.getElementById('logoutButton').style.display = 'none';
+            document.getElementById('gameOver').style.display = 'none';
+            // Reset game state
+            const gameState = {
+                dino: { x: 50, y: 340 - 60, width: 40, height: 60, vy: 0, gravity: 0.8, jumpPower: -15, isJumping: false, isDucking: false },
+                obstacles: [],
+                score: 0,
+                highScore: 0,
+                speed: 5,
+                gameOver: false,
+                gameStarted: false,
+                frameCount: 0,
+                useFallbackShapes: false,
+                imagesLoaded: 0,
+                totalImages: 0,
+                loadTimeout: 5000,
+                images: {
+                    dino_run: [new Image(), new Image(), new Image()],
+                    dino_jump: new Image(),
+                    dino_duck: new Image(),
+                    tentacle: [new Image(), new Image()],
+                    sawblade: [new Image(), new Image(), new Image()],
+                    drone: [new Image(), new Image()]
+                }
+            };
+        }
 
+        document.addEventListener('DOMContentLoaded', () => {
             // Firebase configuration object with API credentials and settings
             const firebaseConfig = {
                 apiKey: "AIzaSyAJCkPYWK3mDTsbEw_VDgh30PbY7Z3BhFg",
@@ -146,41 +197,40 @@
             canvas.height = Math.min(400, window.innerHeight * 0.5); // Sets canvas height to 400px or 50% of viewport height
 
             const elements = {
-                gameOverDiv: document.getElementById('gameOver'), // Reference to the game over div
-                scoreDisplay: document.getElementById('score'), // Reference to the score display span
-                highScoreDisplay: document.getElementById('highScore'), // Reference to the high score display span
-                submitScoreDiv: document.getElementById('submitScore'), // Reference to the score submission div
-                playerNameInput: document.getElementById('playerName'), // Reference to the player name input
-                submitScoreButton: document.getElementById('submitScoreButton'), // Reference to the submit score button
-                errorMessage: document.getElementById('errorMessage'), // Reference to the error message div
-                leaderboardDiv: document.getElementById('leaderboard'), // Reference to the leaderboard div
-                highScoresList: document.getElementById('highScoresList') // Reference to the high scores list
+                gameOverDiv: document.getElementById('gameOver'),
+                scoreDisplay: document.getElementById('score'),
+                highScoreDisplay: document.getElementById('highScore'),
+                submitScoreDiv: document.getElementById('submitScore'),
+                playerNameInput: document.getElementById('playerName'),
+                submitScoreButton: document.getElementById('submitScoreButton'),
+                errorMessage: document.getElementById('errorMessage'),
+                leaderboardDiv: document.getElementById('leaderboard'),
+                highScoresList: document.getElementById('highScoresList')
             };
 
             const gameState = {
-                dino: { x: 50, y: 340 - 60, width: 40, height: 60, vy: 0, gravity: 0.8, jumpPower: -15, isJumping: false, isDucking: false }, // Initial dino state (position, size, velocity, etc.)
-                obstacles: [], // Array to store obstacle objects
-                score: 0, // Current game score
-                highScore: 0, // Highest score achieved
-                speed: 5, // Initial game speed
-                gameOver: false, // Flag to indicate game over state
-                gameStarted: false, // Flag to indicate if the game has started
-                frameCount: 0, // Tracks the number of frames for animation timing
-                useFallbackShapes: false, // Flag to use fallback shapes if images fail to load
-                imagesLoaded: 0, // Counter for loaded images
-                totalImages: 0, // Total number of images to load
-                loadTimeout: 5000, // Timeout in milliseconds for image loading
+                dino: { x: 50, y: 340 - 60, width: 40, height: 60, vy: 0, gravity: 0.8, jumpPower: -15, isJumping: false, isDucking: false },
+                obstacles: [],
+                score: 0,
+                highScore: 0,
+                speed: 5,
+                gameOver: false,
+                gameStarted: false,
+                frameCount: 0,
+                useFallbackShapes: false,
+                imagesLoaded: 0,
+                totalImages: 0,
+                loadTimeout: 5000,
                 images: {
-                    dino_run: [new Image(), new Image(), new Image()], // Array of images for dino running animation
-                    dino_jump: new Image(), // Image for dino jumping
-                    dino_duck: new Image(), // Image for dino ducking
-                    tentacle: [new Image(), new Image()], // Array of images for tentacle animation
-                    sawblade: [new Image(), new Image(), new Image()], // Array of images for sawblade animation
-                    drone: [new Image(), new Image()] // Array of images for drone animation
+                    dino_run: [new Image(), new Image(), new Image()],
+                    dino_jump: new Image(),
+                    dino_duck: new Image(),
+                    tentacle: [new Image(), new Image()],
+                    sawblade: [new Image(), new Image(), new Image()],
+                    drone: [new Image(), new Image()]
                 }
             };
 
-            // Image sources and loading
             const imageSources = {
                 dino_run: ['https://doomnom.github.io/dino_game/sprites/dino_run1.png', 'https://doomnom.github.io/dino_game/sprites/dino_run2.png', 'https://doomnom.github.io/dino_game/sprites/dino_run3.png'],
                 dino_jump: 'https://doomnom.github.io/dino_game/sprites/dino_jump.png',
@@ -191,47 +241,42 @@
             };
 
             function loadImages() {
-                // Loads all game images and sets up event handlers for loading
                 for (let [key, src] of Object.entries(imageSources)) {
                     if (Array.isArray(src)) {
                         gameState.totalImages += src.length;
                         src.forEach((url, index) => {
-                            gameState.images[key][index].onload = () => handleImageLoad(); // Increments loaded count on successful load
-                            gameState.images[key][index].onerror = () => handleImageError(); // Handles image loading errors
-                            gameState.images[key][index].src = url; // Sets the image source URL
+                            gameState.images[key][index].onload = () => handleImageLoad();
+                            gameState.images[key][index].onerror = () => handleImageError();
+                            gameState.images[key][index].src = url;
                         });
                     } else {
                         gameState.totalImages++;
-                        gameState.images[key].onload = () => handleImageLoad(); // Increments loaded count on successful load
-                        gameState.images[key].onerror = () => handleImageError(); // Handles image loading errors
-                        gameState.images[key].src = src; // Sets the image source URL
+                        gameState.images[key].onload = () => handleImageLoad();
+                        gameState.images[key].onerror = () => handleImageError();
+                        gameState.images[key].src = src;
                     }
                 }
                 setTimeout(() => {
                     if (gameState.imagesLoaded < gameState.totalImages) {
-                        gameState.useFallbackShapes = true; // Switches to fallback shapes if loading times out
-                        gameState.imagesLoaded = gameState.totalImages; // Marks all images as loaded
-                        gameLoop(); // Starts the game loop
+                        gameState.useFallbackShapes = true;
+                        gameState.imagesLoaded = gameState.totalImages;
+                        gameLoop();
                     }
                 }, gameState.loadTimeout);
             }
 
             function handleImageLoad() {
-                // Increments the images loaded counter and starts the game when all are loaded
                 gameState.imagesLoaded++;
                 if (gameState.imagesLoaded === gameState.totalImages) gameLoop();
             }
 
             function handleImageError() {
-                // Increments the images loaded counter and enables fallback shapes on error
                 gameState.imagesLoaded++;
                 gameState.useFallbackShapes = true;
                 if (gameState.imagesLoaded === gameState.totalImages) gameLoop();
             }
 
-            // Drawing functions
             function drawDino() {
-                // Draws the dino based on its state (running, jumping, or ducking)
                 if (gameState.useFallbackShapes) {
                     ctx.fillStyle = 'blue';
                     ctx.fillRect(gameState.dino.x, gameState.dino.isDucking ? gameState.dino.y + 20 : gameState.dino.y, gameState.dino.width, gameState.dino.isDucking ? gameState.dino.height / 2 : gameState.dino.height);
@@ -246,7 +291,6 @@
             }
 
             function drawObstacle(obstacle) {
-                // Draws an obstacle based on its type (tentacle, sawblade, or drone)
                 if (gameState.useFallbackShapes) {
                     ctx.fillStyle = obstacle.type === 'tentacle' ? 'purple' : obstacle.type === 'sawblade' ? 'silver' : 'red';
                     if (obstacle.type === 'sawblade') {
@@ -273,14 +317,11 @@
             }
 
             function drawGround() {
-                // Draws the ground line at y=340
                 ctx.fillStyle = 'gray';
                 ctx.fillRect(0, 340, canvas.width, 10);
             }
 
-            // Game logic
             function spawnObstacle() {
-                // Spawns a new obstacle every 100 frames if spacing allows
                 if (gameState.frameCount % 100 === 0) {
                     if (gameState.obstacles.length > 0 && canvas.width - gameState.obstacles[gameState.obstacles.length - 1].x < 200) return;
                     const typeCycle = Math.floor(gameState.frameCount / 100) % 3;
@@ -291,7 +332,6 @@
             }
 
             function updateObstacles() {
-                // Updates obstacle positions and removes off-screen obstacles, increasing score
                 for (let i = gameState.obstacles.length - 1; i >= 0; i--) {
                     gameState.obstacles[i].x -= gameState.speed;
                     if (gameState.obstacles[i].x + gameState.obstacles[i].width < 0) {
@@ -303,7 +343,6 @@
             }
 
             function checkCollision() {
-                // Checks for collision between the dino and any obstacle
                 const dinoHeight = gameState.dino.isDucking ? gameState.dino.height / 2 : gameState.dino.height;
                 const dinoY = gameState.dino.isDucking ? gameState.dino.y + 20 : gameState.dino.y;
                 return gameState.obstacles.some(obstacle =>
@@ -315,7 +354,6 @@
             }
 
             function updateDino() {
-                // Updates the dino's position based on gravity and jumping
                 if (gameState.dino.isJumping) {
                     gameState.dino.vy += gameState.dino.gravity;
                     gameState.dino.y += gameState.dino.vy;
@@ -328,9 +366,7 @@
                 }
             }
 
-            // Input handling
             document.addEventListener('keydown', (event) => {
-                // Handles keyboard input for game control
                 if (!isLoggedIn) return;
                 if (event.code === 'Space' && !gameState.gameOver && !gameState.gameStarted) gameState.gameStarted = true;
                 else if (event.code === 'Space' && !gameState.gameOver && gameState.gameStarted && !gameState.dino.isJumping) {
@@ -342,13 +378,11 @@
             });
 
             document.addEventListener('keyup', (event) => {
-                // Handles key release to stop ducking
                 if (!isLoggedIn) return;
                 if (event.code === 'ArrowDown') gameState.dino.isDucking = false;
             });
 
             document.addEventListener('touchstart', (event) => {
-                // Handles touch input for game control
                 if (!isLoggedIn) return;
                 if (event.target.closest('#submitScore')) return;
                 event.preventDefault();
@@ -369,16 +403,13 @@
             });
 
             document.addEventListener('touchend', (event) => {
-                // Handles touch end to stop ducking
                 if (!isLoggedIn) return;
                 if (event.target.closest('#submitScore')) return;
                 event.preventDefault();
                 gameState.dino.isDucking = false;
             });
 
-            // Game management
             function resetGame() {
-                // Resets the game state to initial conditions
                 if (!isLoggedIn) return;
                 gameState.obstacles = [];
                 gameState.score = 0;
@@ -396,7 +427,6 @@
             }
 
             function submitScore() {
-                // Submits the high score to Firebase with the player's name
                 if (!isLoggedIn) return;
                 const name = elements.playerNameInput.value.trim();
                 if (!name) {
@@ -421,10 +451,9 @@
                 }
             }
 
-            elements.submitScoreButton.addEventListener('click', submitScore); // Adds click event listener to submit score button
+            elements.submitScoreButton.addEventListener('click', submitScore);
 
             function loadHighScores() {
-                // Fetches and displays the top 5 high scores from Firebase
                 if (!isLoggedIn) return;
                 firebase.database().ref('highscores').orderByChild('score').limitToLast(5)
                     .once('value')
@@ -452,52 +481,53 @@
                     });
             }
 
-            // Game loop
             function gameLoop() {
-                // Main game loop that updates and renders the game
                 if (!isLoggedIn) return;
                 console.log('Game loop running');
-                ctx.clearRect(0, 0, canvas.width, canvas.height); // Clears the canvas
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
 
                 if (gameState.imagesLoaded < gameState.totalImages) {
                     ctx.fillStyle = 'black';
                     ctx.font = '24px Arial';
                     ctx.textAlign = 'center';
-                    ctx.fillText(`Loading... ${Math.round((gameState.imagesLoaded / gameState.totalImages) * 100)}%`, canvas.width / 2, canvas.height / 2); // Displays loading progress
+                    ctx.fillText(`Loading... ${Math.round((gameState.imagesLoaded / gameState.totalImages) * 100)}%`, canvas.width / 2, canvas.height / 2);
                     requestAnimationFrame(gameLoop);
                     return;
                 }
 
-                drawGround(); // Draws the ground
-                drawDino(); // Draws the dino
+                drawGround();
+                drawDino();
 
                 if (!gameState.gameStarted && !gameState.gameOver) {
                     ctx.fillStyle = 'black';
                     ctx.font = '24px Arial';
                     ctx.textAlign = 'center';
-                    ctx.fillText('Press Space or Tap to Start', canvas.width / 2, canvas.height / 2); // Instructions to start
-                    ctx.fillText('Hold Bottom-Right to Duck', canvas.width / 2, canvas.height / 2 + 30); // Instructions to duck
+                    ctx.fillText('Press Space or Tap to Start', canvas.width / 2, canvas.height / 2);
+                    ctx.fillText('Hold Bottom-Right to Duck', canvas.width / 2, canvas.height / 2 + 30);
                 } else if (!gameState.gameOver) {
                     gameState.frameCount++;
-                    updateDino(); // Updates dino position
-                    spawnObstacle(); // Spawns new obstacles
-                    updateObstacles(); // Updates obstacle positions
-                    gameState.speed += 0.0005; // Gradually increases game speed
+                    updateDino();
+                    spawnObstacle();
+                    updateObstacles();
+                    gameState.speed += 0.0005;
                     if (checkCollision()) {
-                        gameState.gameOver = true; // Ends game on collision
+                        gameState.gameOver = true;
                         elements.gameOverDiv.style.display = 'block';
                         elements.submitScoreDiv.style.display = 'block';
                     }
-                    gameState.obstacles.forEach(drawObstacle); // Draws all obstacles
+                    gameState.obstacles.forEach(drawObstacle);
                 }
 
-                elements.scoreDisplay.textContent = gameState.score; // Updates score display
-                elements.highScoreDisplay.textContent = gameState.highScore; // Updates high score display
-                requestAnimationFrame(gameLoop); // Requests next animation frame
+                elements.scoreDisplay.textContent = gameState.score;
+                elements.highScoreDisplay.textContent = gameState.highScore;
+                requestAnimationFrame(gameLoop);
             }
 
-            // Initial load is handled by login
+            if (isLoggedIn) {
+                loadImages();
+                loadHighScores();
+            }
         });
     </script>
-<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'95f9077abe90673d',t:'MTc1MjU4MDA5MC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'95f914574fdc6732',t:'MTc1MjU4MDYxNi4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'95f91a3fae50f999',t:'MTc1MjU4MDg1OC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'95f9077abe90673d',t:'MTc1MjU4MDA5MC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'95f914574fdc6732',t:'MTc1MjU4MDYxNi4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'95f91a3fae50f999',t:'MTc1MjU4MDg1OC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'95f920f73c36678d',t:'MTc1MjU4MTEzNC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
