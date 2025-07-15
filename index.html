@@ -242,27 +242,21 @@
 
             // Game logic
             function spawnObstacle() {
-                if (gameState.frameCount % (60 + Math.floor(Math.random() * 60)) === 0) {
-                    // Check if last obstacle is far enough
+                if (gameState.frameCount % 100 === 0) { // Fixed interval of 100 frames (~1.67s at 60 FPS)
                     let canSpawn = true;
                     if (gameState.obstacles.length > 0) {
                         let lastObstacle = gameState.obstacles[gameState.obstacles.length - 1];
-                        if (canvas.width - lastObstacle.x < 100) { // Minimum 100px spacing
+                        if (canvas.width - lastObstacle.x < 200) { // Ensure minimum 200px spacing
                             canSpawn = false;
                         }
                     }
                     if (canSpawn) {
                         let type, yPos;
-                        const rand = Math.random();
-                        type = rand < 0.33 ? 'tentacle' : rand < 0.66 ? 'sawblade' : 'drone';
-                        // Random yPos with constraints for playability
-                        if (type === 'tentacle') {
-                            yPos = 280 + Math.floor(Math.random() * 40); // 280-320, jumpable
-                        } else if (type === 'sawblade') {
-                            yPos = 200 + Math.floor(Math.random() * 80); // 200-280, duckable
-                        } else { // drone
-                            yPos = 200 + Math.floor(Math.random() * 80); // 200-280, mix of jump/duck
-                        }
+                        // Cycle through types to mimic Chrome's pattern with variety
+                        const typeCycle = Math.floor(gameState.frameCount / 100) % 3;
+                        type = typeCycle === 0 ? 'tentacle' : typeCycle === 1 ? 'sawblade' : 'drone';
+                        // Fixed height range for jumpability (Chrome cacti are ~20-50px high, placed at ~290-310px)
+                        yPos = 290 + Math.floor(Math.random() * 20); // 290-310px, all jumpable
                         let obstacle = {
                             x: canvas.width,
                             y: yPos,
