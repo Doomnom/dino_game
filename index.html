@@ -5,10 +5,11 @@
     <link rel="icon" type="image/x-icon" href="/favicon.ico">
     <style>
         canvas {
-            border: 1px solid black; /* Revert to original black border */
+            border: 1px solid black;
             display: block;
             margin: 0 auto;
-            max-width: 100vw; /* Ensure canvas fits mobile screens */
+            max-width: 100vw;
+            max-height: 100vh;
         }
         #gameOver {
             display: none;
@@ -16,7 +17,7 @@
             font-family: Arial, sans-serif;
             font-size: 24px;
             margin-top: 20px;
-            color: black; /* Revert to original black text */
+            color: black;
         }
         #scorePanel {
             text-align: center;
@@ -33,18 +34,17 @@
             font-family: Arial, sans-serif;
             margin-top: 20px;
         }
-        #localTopScores {
+        #errorMessage {
+            color: red;
+            display: none;
             text-align: center;
-            font-family: Arial, sans-serif;
-            margin-top: 10px;
-            font-size: 16px;
         }
     </style>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 </head>
 <body>
-    <canvas id="gameCanvas" width="800" height="400"></canvas>
+    <canvas id="gameCanvas"></canvas>
     <div id="gameOver">Game Over! Press Space or Tap to Restart</div>
     <div id="scorePanel">
         High Score: <span id="highScore">0</span><br>
@@ -54,148 +54,205 @@
         Enter your name: <input type="text" id="playerName" maxlength="20">
         <button id="submitScoreButton">Submit Score</button>
     </div>
+    <div id="errorMessage"></div>
     <div id="leaderboard">
         <h3>Global Top 5 High Scores</h3>
-        <pre id="highScoresList"></pre>
-    </div>
-    <div id="localTopScores">
-        <h4>Your Top 5 Scores</h4>
-        <pre id="localScoresList"></pre>
+        <ul id="highScoresList"></ul>
     </div>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            // Firebase configuration
+            // Firebase config (replace with actual values for testing)
             const firebaseConfig = {
-                apiKey: "AIzaSyAJCkPYWK3mDTsbEw_VDgh30PbY7Z3BhFg",
-                authDomain: "dinogame-r3dnax.firebaseapp.com",
-                databaseURL: "https://dinogame-r3dnax-default-rtdb.europe-west1.firebasedatabase.app",
-                projectId: "dinogame-r3dnax",
-                storageBucket: "dinogame-r3dnax.firebasestorage.app",
-                messagingSenderId: "401593443465",
-                appId: "1:401593443465:web:492e13e480e0488d3d1258",
-                measurementId: "G-JS0KZL2BT5"
+                apiKey: "YOUR_API_KEY",
+                authDomain: "YOUR_AUTH_DOMAIN",
+                databaseURL: "YOUR_DATABASE_URL",
+                projectId: "YOUR_PROJECT_ID",
+                storageBucket: "YOUR_STORAGE_BUCKET",
+                messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+                appId: "YOUR_APP_ID",
+                measurementId: "YOUR_MEASUREMENT_ID"
             };
             firebase.initializeApp(firebaseConfig);
 
             const canvas = document.getElementById('gameCanvas');
             const ctx = canvas.getContext('2d');
+            // Dynamic canvas sizing
+            canvas.width = Math.min(800, window.innerWidth * 0.9);
+            canvas.height = Math.min(400, window.innerHeight * 0.5);
             const gameOverDiv = document.getElementById('gameOver');
             const scoreDisplay = document.getElementById('score');
             const highScoreDisplay = document.getElementById('highScore');
             const submitScoreDiv = document.getElementById('submitScore');
             const playerNameInput = document.getElementById('playerName');
             const submitScoreButton = document.getElementById('submitScoreButton');
+            const errorMessage = document.getElementById('errorMessage');
             const leaderboardDiv = document.getElementById('leaderboard');
             const highScoresList = document.getElementById('highScoresList');
-            const localScoresList = document.getElementById('localScoresList');
 
-            // Game objects
-            let dino = {
-                x: 50,
-                y: 340 - 60, // Start dino at ground level (340 - height)
-                width: 40,
-                height: 60,
-                vy: 0,
-                gravity: 0.8,
-                jumpPower: -15,
-                isJumping: false,
-                isDucking: false
+            // Game objects (encapsulated in state)
+            const gameState = {
+                dino: {
+                    x: 50,
+                    y: 340 - 60,
+                    width: 40,
+                    height: 60,
+                    vy: 0,
+                    gravity: 0.8,
+                    jumpPower: -15,
+                    isJumping: false,
+                    isDucking: false
+                },
+                obstacles: [],
+                score: 0,
+                highScore: 0,
+                speed: 5,
+                gameOver: false,
+                gameStarted: false,
+                frameCount: 0,
+                useFallbackShapes: false,
+                imagesLoaded: 0,
+                totalImages: 0,
+                loadTimeout: 5000,
+                images: {
+                    dino_run: [new Image(), new Image(), new Image()],
+                    dino_jump: new Image(),
+                    dino_duck: new Image(),
+                    tentacle: [new Image(), new Image()],
+                    sawblade: [new Image(), new Image(), new Image()],
+                    drone: [new Image(), new Image()]
+                },
+                imageData: {
+                    dino_run: [],
+                    dino_jump: null,
+                    dino_duck: null,
+                    tentacle: [],
+                    sawblade: [],
+                    drone: []
+                },
+                imageDataReady: false
             };
 
-            let obstacles = [];
-            let score = 0;
-            let highScore = localStorage.getItem('highScore') ? parseInt(localStorage.getItem('highScore')) : 0;
-            let speed = 5;
-            let gameOver = false;
-            let gameStarted = false;
-            let frameCount = 0;
-            let lastObstacleType = null;
-            let useFallbackShapes = false;
-            let imagesLoaded = 0;
-            let totalImages = 0;
-            const loadTimeout = 5000;
+            // Image sources
+            gameState.images.dino_run[0].src = 'https://doomnom.github.io/dino_game/sprites/dino_run1.png';
+            gameState.images.dino_run[1].src = 'https://doomnom.github.io/dino_game/sprites/dino_run2.png';
+            gameState.images.dino_run[2].src = 'https://doomnom.github.io/dino_game/sprites/dino_run3.png';
+            gameState.images.dino_jump.src = 'https://doomnom.github.io/dino_game/sprites/dino_jump.png';
+            gameState.images.dino_duck.src = 'https://doomnom.github.io/dino_game/sprites/dino_duck.png';
+            gameState.images.tentacle[0].src = 'https://doomnom.github.io/dino_game/sprites/tentacle1.png';
+            gameState.images.tentacle[1].src = 'https://doomnom.github.io/dino_game/sprites/tentacle2.png';
+            gameState.images.sawblade[0].src = 'https://doomnom.github.io/dino_game/sprites/sawblade1.png';
+            gameState.images.sawblade[1].src = 'https://doomnom.github.io/dino_game/sprites/sawblade2.png';
+            gameState.images.sawblade[2].src = 'https://doomnom.github.io/dino_game/sprites/sawblade3.png';
+            gameState.images.drone[0].src = 'https://doomnom.github.io/dino_game/sprites/drone1.png';
+            gameState.images.drone[1].src = 'https://doomnom.github.io/dino_game/sprites/drone2.png';
 
-            // Load local top 5 scores
-            let localTopScores = JSON.parse(localStorage.getItem('topScores')) || [];
-
-            // Sprite images
-            const images = {
-                dino_run: [
-                    new Image(),
-                    new Image(),
-                    new Image()
-                ],
-                dino_jump: new Image(),
-                dino_duck: new Image(),
-                tentacle: [new Image(), new Image()],
-                sawblade: [new Image(), new Image(), new Image()],
-                drone: [new Image(), new Image()]
-            };
-            images.dino_run[0].src = 'https://doomnom.github.io/dino_game/sprites/dino_run1.png';
-            images.dino_run[1].src = 'https://doomnom.github.io/dino_game/sprites/dino_run2.png';
-            images.dino_run[2].src = 'https://doomnom.github.io/dino_game/sprites/dino_run3.png';
-            images.dino_jump.src = 'https://doomnom.github.io/dino_game/sprites/dino_jump.png';
-            images.dino_duck.src = 'https://doomnom.github.io/dino_game/sprites/dino_duck.png';
-            images.tentacle[0].src = 'https://doomnom.github.io/dino_game/sprites/tentacle1.png';
-            images.tentacle[1].src = 'https://doomnom.github.io/dino_game/sprites/tentacle2.png';
-            images.sawblade[0].src = 'https://doomnom.github.io/dino_game/sprites/sawblade1.png';
-            images.sawblade[1].src = 'https://doomnom.github.io/dino_game/sprites/sawblade2.png';
-            images.sawblade[2].src = 'https://doomnom.github.io/dino_game/sprites/sawblade3.png';
-            images.drone[0].src = 'https://doomnom.github.io/dino_game/sprites/drone1.png';
-            images.drone[1].src = 'https://doomnom.github.io/dino_game/sprites/drone2.png';
-
-            // Image loading with error handling
-            for (let key in images) {
-                if (Array.isArray(images[key])) {
-                    totalImages += images[key].length;
-                    images[key].forEach(img => {
-                        img.onload = () => imagesLoaded++;
+            // Image loading
+            for (let key in gameState.images) {
+                if (Array.isArray(gameState.images[key])) {
+                    gameState.totalImages += gameState.images[key].length;
+                    gameState.images[key].forEach(img => {
+                        img.onload = () => gameState.imagesLoaded++;
                         img.onerror = () => {
-                            imagesLoaded++;
-                            useFallbackShapes = true;
+                            gameState.imagesLoaded++;
+                            gameState.useFallbackShapes = true;
                         };
                     });
                 } else {
-                    totalImages++;
-                    images[key].onload = () => imagesLoaded++;
-                    images[key].onerror = () => {
-                        imagesLoaded++;
-                        useFallbackShapes = true;
+                    gameState.totalImages++;
+                    gameState.images[key].onload = () => gameState.imagesLoaded++;
+                    gameState.images[key].onerror = () => {
+                        gameState.imagesLoaded++;
+                        gameState.useFallbackShapes = true;
                     };
                 }
             }
 
-            // Timeout to force fallback after 5 seconds
             setTimeout(() => {
-                if (imagesLoaded < totalImages) {
-                    useFallbackShapes = true;
-                    imagesLoaded = totalImages;
+                if (gameState.imagesLoaded < gameState.totalImages) {
+                    gameState.useFallbackShapes = true;
+                    gameState.imagesLoaded = gameState.totalImages;
                 }
-            }, loadTimeout);
+            }, gameState.loadTimeout);
+
+            // Create image data for pixel-perfect collision
+            function createImageData() {
+                if (gameState.useFallbackShapes) return;
+                // Dino run
+                gameState.imageData.dino_run = gameState.images.dino_run.map(img => {
+                    const offscreen = document.createElement('canvas');
+                    offscreen.width = gameState.dino.width;
+                    offscreen.height = gameState.dino.height;
+                    const ctx = offscreen.getContext('2d');
+                    ctx.drawImage(img, 0, 0, offscreen.width, offscreen.height);
+                    return ctx.getImageData(0, 0, offscreen.width, offscreen.height);
+                });
+                // Dino jump
+                const offscreenJump = document.createElement('canvas');
+                offscreenJump.width = gameState.dino.width;
+                offscreenJump.height = gameState.dino.height;
+                const ctxJump = offscreenJump.getContext('2d');
+                ctxJump.drawImage(gameState.images.dino_jump, 0, 0, offscreenJump.width, offscreenJump.height);
+                gameState.imageData.dino_jump = ctxJump.getImageData(0, 0, offscreenJump.width, offscreenJump.height);
+                // Dino duck
+                const offscreenDuck = document.createElement('canvas');
+                offscreenDuck.width = gameState.dino.width;
+                offscreenDuck.height = gameState.dino.height / 2;
+                const ctxDuck = offscreenDuck.getContext('2d');
+                ctxDuck.drawImage(gameState.images.dino_duck, 0, 0, offscreenDuck.width, offscreenDuck.height);
+                gameState.imageData.dino_duck = ctxDuck.getImageData(0, 0, offscreenDuck.width, offscreenDuck.height);
+                // Tentacles
+                gameState.imageData.tentacle = gameState.images.tentacle.map(img => {
+                    const offscreen = document.createElement('canvas');
+                    offscreen.width = 20;
+                    offscreen.height = 40;
+                    const ctx = offscreen.getContext('2d');
+                    ctx.drawImage(img, 0, 0, offscreen.width, offscreen.height);
+                    return ctx.getImageData(0, 0, offscreen.width, offscreen.height);
+                });
+                // Sawblades
+                gameState.imageData.sawblade = gameState.images.sawblade.map(img => {
+                    const offscreen = document.createElement('canvas');
+                    offscreen.width = 30;
+                    offscreen.height = 30;
+                    const ctx = offscreen.getContext('2d');
+                    ctx.drawImage(img, 0, 0, offscreen.width, offscreen.height);
+                    return ctx.getImageData(0, 0, offscreen.width, offscreen.height);
+                });
+                // Drones
+                gameState.imageData.drone = gameState.images.drone.map(img => {
+                    const offscreen = document.createElement('canvas');
+                    offscreen.width = 30;
+                    offscreen.height = 30;
+                    const ctx = offscreen.getContext('2d');
+                    ctx.drawImage(img, 0, 0, offscreen.width, offscreen.height);
+                    return ctx.getImageData(0, 0, offscreen.width, offscreen.height);
+                });
+            }
 
             // Drawing functions
-            function drawDino() {
-                if (useFallbackShapes) {
+            function drawDino(timestamp) {
+                if (gameState.useFallbackShapes) {
                     ctx.fillStyle = 'blue';
-                    if (dino.isDucking) {
-                        ctx.fillRect(dino.x, dino.y + 20, dino.width, dino.height / 2);
+                    if (gameState.dino.isDucking) {
+                        ctx.fillRect(gameState.dino.x, gameState.dino.y + 20, gameState.dino.width, gameState.dino.height / 2);
                     } else {
-                        ctx.fillRect(dino.x, dino.y, dino.width, dino.height);
+                        ctx.fillRect(gameState.dino.x, gameState.dino.y, gameState.dino.width, gameState.dino.height);
                     }
                 } else {
-                    const frame = Math.floor(frameCount / 10) % images.dino_run.length;
-                    if (dino.isDucking) {
-                        ctx.drawImage(images.dino_duck, dino.x, dino.y + 20, dino.width, dino.height / 2);
-                    } else if (dino.isJumping) {
-                        ctx.drawImage(images.dino_jump, dino.x, dino.y, dino.width, dino.height);
+                    if (gameState.dino.isDucking) {
+                        ctx.drawImage(gameState.images.dino_duck, gameState.dino.x, gameState.dino.y + 20, gameState.dino.width, gameState.dino.height / 2);
+                    } else if (gameState.dino.isJumping) {
+                        ctx.drawImage(gameState.images.dino_jump, gameState.dino.x, gameState.dino.y, gameState.dino.width, gameState.dino.height);
                     } else {
-                        ctx.drawImage(images.dino_run[frame], dino.x, dino.y, dino.width, dino.height);
+                        const animationSpeed = 100; // ms per frame
+                        const frameIndex = Math.floor((timestamp / animationSpeed) % gameState.images.dino_run.length);
+                        ctx.drawImage(gameState.images.dino_run[frameIndex], gameState.dino.x, gameState.dino.y, gameState.dino.width, gameState.dino.height);
                     }
                 }
             }
 
-            function drawObstacle(obstacle) {
-                if (useFallbackShapes) {
+            function drawObstacle(obstacle, timestamp) {
+                if (gameState.useFallbackShapes) {
                     if (obstacle.type === 'tentacle') {
                         ctx.fillStyle = 'purple';
                         ctx.fillRect(obstacle.x, obstacle.y, obstacle.width, obstacle.height);
@@ -214,14 +271,17 @@
                         ctx.fill();
                     }
                 } else {
-                    const frame = Math.floor(frameCount / 10) % (obstacle.type === 'tentacle' ? images.tentacle.length : obstacle.type === 'sawblade' ? images.sawblade.length : images.drone.length);
+                    const animationSpeed = 100; // ms per frame
+                    let frames;
                     if (obstacle.type === 'tentacle') {
-                        ctx.drawImage(images.tentacle[frame], obstacle.x, obstacle.y, obstacle.width, obstacle.height);
+                        frames = gameState.images.tentacle;
                     } else if (obstacle.type === 'sawblade') {
-                        ctx.drawImage(images.sawblade[frame], obstacle.x, obstacle.y, obstacle.width, obstacle.height);
+                        frames = gameState.images.sawblade;
                     } else if (obstacle.type === 'drone') {
-                        ctx.drawImage(images.drone[frame], obstacle.x, obstacle.y, obstacle.width, obstacle.height);
+                        frames = gameState.images.drone;
                     }
+                    const frameIndex = Math.floor((timestamp / animationSpeed) % frames.length);
+                    ctx.drawImage(frames[frameIndex], obstacle.x, obstacle.y, obstacle.width, obstacle.height);
                 }
             }
 
@@ -232,22 +292,16 @@
 
             // Game logic
             function spawnObstacle() {
-                if (frameCount % 60 === 0) {
-                    let type;
-                    let yPos;
-                    if (lastObstacleType === 'sawblade' || lastObstacleType === 'drone') {
-                        type = 'tentacle';
+                if (gameState.frameCount % (60 + Math.floor(Math.random() * 60)) === 0) {
+                    let type, yPos;
+                    const rand = Math.random();
+                    type = rand < 0.33 ? 'tentacle' : rand < 0.66 ? 'sawblade' : 'drone';
+                    if (type === 'tentacle') {
                         yPos = 300;
+                    } else if (type === 'sawblade') {
+                        yPos = 200;
                     } else {
-                        const rand = Math.random();
-                        type = rand < 0.5 ? 'tentacle' : (rand < 0.75 ? 'sawblade' : 'drone');
-                        if (type === 'tentacle') {
-                            yPos = 300;
-                        } else if (type === 'sawblade') {
-                            yPos = 200;
-                        } else {
-                            yPos = Math.random() < 0.5 ? 280 : 200;
-                        }
+                        yPos = Math.random() < 0.5 ? 280 : 200;
                     }
                     let obstacle = {
                         x: canvas.width,
@@ -256,61 +310,116 @@
                         height: type === 'tentacle' ? 40 : 30,
                         type: type
                     };
-                    obstacles.push(obstacle);
-                    lastObstacleType = type;
+                    gameState.obstacles.push(obstacle);
                 }
             }
 
             function updateObstacles() {
-                for (let i = obstacles.length - 1; i >= 0; i--) {
-                    obstacles[i].x -= speed;
-                    if (obstacles[i].x + obstacles[i].width < 0) {
-                        obstacles.splice(i, 1);
-                        score += 10;
-                        if (score > highScore) {
-                            highScore = score;
-                            localStorage.setItem('highScore', highScore);
+                for (let i = gameState.obstacles.length - 1; i >= 0; i--) {
+                    gameState.obstacles[i].x -= gameState.speed;
+                    if (gameState.obstacles[i].x + gameState.obstacles[i].width < 0) {
+                        gameState.obstacles.splice(i, 1);
+                        gameState.score += 10;
+                        if (gameState.score > gameState.highScore) {
+                            gameState.highScore = gameState.score;
                         }
-                        // Update local top 5 scores
-                        localTopScores.push(score);
-                        localTopScores.sort((a, b) => b - a);
-                        localTopScores = localTopScores.slice(0, 5);
-                        localStorage.setItem('topScores', JSON.stringify(localTopScores));
-                        updateLocalScoresDisplay();
                     }
                 }
             }
 
-            function checkCollision() {
-                for (let obstacle of obstacles) {
-                    let dinoHeight = dino.isDucking ? dino.height / 2 : dino.height;
-                    let dinoY = dino.isDucking ? dino.y + 20 : dino.y;
-                    if (dino.x < obstacle.x + obstacle.width &&
-                        dino.x + dino.width > obstacle.x &&
-                        dinoY < obstacle.y + obstacle.height &&
-                        dinoY + dinoHeight > obstacle.y) {
-                        return true;
+            function checkCollision(timestamp) {
+                if (gameState.useFallbackShapes || !gameState.imageDataReady) {
+                    // Bounding box collision
+                    for (let obstacle of gameState.obstacles) {
+                        let dinoHeight = gameState.dino.isDucking ? gameState.dino.height / 2 : gameState.dino.height;
+                        let dinoY = gameState.dino.isDucking ? gameState.dino.y + 20 : gameState.dino.y;
+                        if (gameState.dino.x < obstacle.x + obstacle.width &&
+                            gameState.dino.x + gameState.dino.width > obstacle.x &&
+                            dinoY < obstacle.y + obstacle.height &&
+                            dinoY + dinoHeight > obstacle.y) {
+                            return true;
+                        }
                     }
+                    return false;
+                } else {
+                    // Pixel-perfect collision
+                    for (let obstacle of gameState.obstacles) {
+                        let dinoTop = gameState.dino.isDucking ? gameState.dino.y + 20 : gameState.dino.y;
+                        let dinoHeight = gameState.dino.isDucking ? gameState.dino.height / 2 : gameState.dino.height;
+                        let dinoLeft = gameState.dino.x;
+                        let dinoRight = dinoLeft + gameState.dino.width;
+                        let dinoBottom = dinoTop + dinoHeight;
+                        let obsLeft = obstacle.x;
+                        let obsRight = obsLeft + obstacle.width;
+                        let obsTop = obstacle.y;
+                        let obsBottom = obsTop + obstacle.height;
+                        let overlapLeft = Math.max(dinoLeft, obsLeft);
+                        let overlapRight = Math.min(dinoRight, obsRight);
+                        let overlapTop = Math.max(dinoTop, obsTop);
+                        let overlapBottom = Math.min(dinoBottom, obsBottom);
+                        if (overlapLeft < overlapRight && overlapTop < overlapBottom) {
+                            // Get dino ImageData
+                            let dinoData;
+                            if (gameState.dino.isDucking) {
+                                dinoData = gameState.imageData.dino_duck;
+                            } else if (gameState.dino.isJumping) {
+                                dinoData = gameState.imageData.dino_jump;
+                            } else {
+                                const animationSpeed = 100;
+                                const frameIndex = Math.floor((timestamp / animationSpeed) % gameState.images.dino_run.length);
+                                dinoData = gameState.imageData.dino_run[frameIndex];
+                            }
+                            // Get obstacle ImageData
+                            let obsData;
+                            const animationSpeed = 100;
+                            let frames = gameState.imageData[obstacle.type];
+                            const frameIndex = Math.floor((timestamp / animationSpeed) % frames.length);
+                            obsData = frames[frameIndex];
+                            // Loop through overlap area
+                            for (let oy = Math.floor(overlapTop); oy < Math.ceil(overlapBottom); oy++) {
+                                for (let ox = Math.floor(overlapLeft); ox < Math.ceil(overlapRight); ox++) {
+                                    // Map to dino local coordinates
+                                    let dx = ox - dinoLeft;
+                                    let dy = oy - dinoTop;
+                                    if (dx >= 0 && dx < dinoData.width && dy >= 0 && dy < dinoData.height) {
+                                        let dinoIndex = (Math.floor(dy) * dinoData.width + Math.floor(dx)) * 4 + 3;
+                                        let dinoAlpha = dinoData.data[dinoIndex];
+                                        if (dinoAlpha > 0) {
+                                            // Map to obstacle local coordinates
+                                            let oxLocal = ox - obsLeft;
+                                            let oyLocal = oy - obsTop;
+                                            if (oxLocal >= 0 && oxLocal < obsData.width && oyLocal >= 0 && oyLocal < obsData.height) {
+                                                let obsIndex = (Math.floor(oyLocal) * obsData.width + Math.floor(oxLocal)) * 4 + 3;
+                                                let obsAlpha = obsData.data[obsIndex];
+                                                if (obsAlpha > 0) {
+                                                    return true;
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    return false;
                 }
-                return false;
             }
 
             function updateDino() {
-                if (dino.isJumping) {
-                    dino.vy += dino.gravity;
-                    dino.y += dino.vy;
-                    // Cap y-position to prevent clipping through ground
-                    if (dino.isDucking) {
-                        if (dino.y > 340 - dino.height / 2) {
-                            dino.y = 340 - dino.height / 2;
-                            dino.vy = 0;
-                            dino.isJumping = false;
+                if (gameState.dino.isJumping) {
+                    gameState.dino.vy += gameState.dino.gravity;
+                    gameState.dino.y += gameState.dino.vy;
+                    if (gameState.dino.isDucking) {
+                        if (gameState.dino.y > 340 - gameState.dino.height / 2) {
+                            gameState.dino.y = 340 - gameState.dino.height / 2;
+                            gameState.dino.vy = 0;
+                            gameState.dino.isJumping = false;
                         }
                     } else {
-                        if (dino.y > 340 - dino.height) {
-                            dino.y = 340 - dino.height;
-                            dino.vy = 0;
-                            dino.isJumping = false;
+                        if (gameState.dino.y > 340 - gameState.dino.height) {
+                            gameState.dino.y = 340 - gameState.dino.height;
+                            gameState.dino.vy = 0;
+                            gameState.dino.isJumping = false;
                         }
                     }
                 }
@@ -318,175 +427,183 @@
 
             // Input handling - Keyboard
             document.addEventListener('keydown', function(event) {
-                if (event.code === 'Space' && !gameOver && !gameStarted) {
-                    gameStarted = true;
-                } else if (event.code === 'Space' && !gameOver && gameStarted) {
-                    if (!dino.isJumping) {
-                        dino.vy = dino.jumpPower;
-                        dino.isJumping = true;
-                        dino.isDucking = false;
+                if (event.code === 'Space' && !gameState.gameOver && !gameState.gameStarted) {
+                    gameState.gameStarted = true;
+                } else if (event.code === 'Space' && !gameState.gameOver && gameState.gameStarted) {
+                    if (!gameState.dino.isJumping) {
+                        gameState.dino.vy = gameState.dino.jumpPower;
+                        gameState.dino.isJumping = true;
+                        gameState.dino.isDucking = false;
                     }
-                } else if (event.code === 'ArrowDown' && !gameOver && !dino.isJumping && gameStarted) {
-                    dino.isDucking = true;
-                } else if (event.code === 'Space' && gameOver) {
+                } else if (event.code === 'ArrowDown' && !gameState.gameOver && !gameState.dino.isJumping && gameState.gameStarted) {
+                    gameState.dino.isDucking = true;
+                } else if (event.code === 'Space' && gameState.gameOver) {
                     resetGame();
                 }
             });
 
             document.addEventListener('keyup', function(event) {
                 if (event.code === 'ArrowDown') {
-                    dino.isDucking = false;
+                    gameState.dino.isDucking = false;
                 }
             });
 
             // Input handling - Touch
             document.addEventListener('touchstart', function(event) {
-                // Ignore touches on the score submission form
                 if (event.target.closest('#submitScore')) {
                     return;
                 }
-                event.preventDefault(); // Prevent scrolling or zooming
+                event.preventDefault();
                 const touch = event.touches[0];
                 const rect = canvas.getBoundingClientRect();
-                const touchX = touch.clientX - rect.left; // Canvas-relative x
-                const touchY = touch.clientY - rect.top;  // Canvas-relative y
+                const touchX = touch.clientX - rect.left;
+                const touchY = touch.clientY - rect.top;
 
-                // Check if touch is within canvas bounds and in bottom-right quadrant for ducking
                 if (touchX >= 0 && touchY >= 0 && touchX <= canvas.width && touchY <= canvas.height &&
-                    touchX > canvas.width / 2 && touchY > canvas.height / 2 && !gameOver && !dino.isJumping && gameStarted) {
-                    dino.isDucking = true;
+                    touchX > canvas.width / 2 && touchY > canvas.height / 2 && !gameState.gameOver && !gameState.dino.isJumping && gameState.gameStarted) {
+                    gameState.dino.isDucking = true;
                 } else {
-                    // Tap anywhere to jump, start, or restart
-                    if (!gameOver && !gameStarted) {
-                        gameStarted = true;
-                    } else if (!gameOver && gameStarted && !dino.isJumping) {
-                        dino.vy = dino.jumpPower;
-                        dino.isJumping = true;
-                        dino.isDucking = false;
-                    } else if (gameOver) {
+                    if (!gameState.gameOver && !gameState.gameStarted) {
+                        gameState.gameStarted = true;
+                    } else if (!gameState.gameOver && gameState.gameStarted && !gameState.dino.isJumping) {
+                        gameState.dino.vy = gameState.dino.jumpPower;
+                        gameState.dino.isJumping = true;
+                        gameState.dino.isDucking = false;
+                    } else if (gameState.gameOver) {
                         resetGame();
                     }
                 }
             });
 
             document.addEventListener('touchend', function(event) {
-                // Ignore touches on the score submission form
                 if (event.target.closest('#submitScore')) {
                     return;
                 }
                 event.preventDefault();
-                dino.isDucking = false; // Stop ducking when touch ends
+                gameState.dino.isDucking = false;
             });
 
             // Reset game state
             function resetGame() {
-                obstacles = [];
-                score = 0;
-                speed = 5;
-                gameOver = false;
-                gameStarted = false;
+                gameState.obstacles = [];
+                gameState.score = 0;
+                gameState.speed = 5;
+                gameState.gameOver = false;
+                gameState.gameStarted = false;
                 gameOverDiv.style.display = 'none';
-                dino.y = 340 - dino.height;
-                dino.vy = 0;
-                dino.isJumping = false;
-                dino.isDucking = false;
-                lastObstacleType = null;
-                submitScoreDiv.style.display = 'block';
+                gameState.dino.y = 340 - gameState.dino.height;
+                gameState.dino.vy = 0;
+                gameState.dino.isJumping = false;
+                gameState.dino.isDucking = false;
+                submitScoreDiv.style.display = 'none';
+                errorMessage.style.display = 'none';
                 loadHighScores();
             }
 
             // Score submission
             function submitScore() {
                 const name = playerNameInput.value.trim();
-                if (name && highScore > 0) {
-                    const scoreEntry = { name: name, score: highScore, timestamp: Date.now() };
+                if (!name) {
+                    errorMessage.textContent = 'Please enter a name';
+                    errorMessage.style.display = 'block';
+                    return;
+                }
+                if (gameState.highScore > 0) {
+                    const scoreEntry = { name: name, score: gameState.highScore, timestamp: Date.now() };
                     firebase.database().ref('highscores').push(scoreEntry)
                         .then(() => {
                             playerNameInput.value = '';
                             submitScoreDiv.style.display = 'none';
+                            errorMessage.style.display = 'none';
                             loadHighScores();
                         })
-                        .catch(error => alert('Error submitting score: ' + error.message));
+                        .catch(error => {
+                            errorMessage.textContent = 'Error submitting score: ' + error.message;
+                            errorMessage.style.display = 'block';
+                        });
                 } else {
                     submitScoreDiv.style.display = 'none';
                 }
             }
 
-            // Attach submitScore to button click
             submitScoreButton.addEventListener('click', submitScore);
 
-            // Load and display global high scores
+            // Load high scores
             function loadHighScores() {
                 firebase.database().ref('highscores').orderByChild('score').limitToLast(5)
                     .once('value')
                     .then(snapshot => {
+                        highScoresList.innerHTML = '';
                         const scores = [];
                         snapshot.forEach(childSnapshot => {
                             scores.unshift(childSnapshot.val());
                         });
-                        highScoresList.textContent = scores.length ? scores.map(s => `${s.name}: ${s.score}`).join('\n') : 'No high scores yet.';
+                        if (scores.length) {
+                            scores.forEach(s => {
+                                const li = document.createElement('li');
+                                li.textContent = `${s.name}: ${s.score}`;
+                                highScoresList.appendChild(li);
+                            });
+                        } else {
+                            const li = document.createElement('li');
+                            li.textContent = 'No high scores yet.';
+                            highScoresList.appendChild(li);
+                        }
                     })
                     .catch(error => {
                         console.error('Leaderboard fetch error:', error);
-                        highScoresList.textContent = 'Error loading high scores. Check console for details.';
+                        const li = document.createElement('li');
+                        li.textContent = 'Error loading high scores.';
+                        highScoresList.appendChild(li);
                     });
             }
 
-            // Update and display local top 5 scores
-            function updateLocalScoresDisplay() {
-                localScoresList.textContent = localTopScores.length ? localTopScores.join('\n') : 'No local scores yet.';
-            }
+           function gameLoop(timestamp) {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            // Game loop
-            function gameLoop() {
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
+    if (gameState.imagesLoaded < gameState.totalImages) {
+        ctx.fillStyle = 'black';
+        ctx.font = '24px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText(`Loading... ${Math.round((gameState.imagesLoaded / gameState.totalImages) * 100)}%`, canvas.width / 2, canvas.height / 2);
+        requestAnimationFrame(gameLoop);
+        return;
+    }
 
-                if (imagesLoaded < totalImages) {
-                    ctx.fillStyle = 'black';
-                    ctx.font = '24px Arial';
-                    ctx.textAlign = 'center';
-                    ctx.fillText('Loading...', canvas.width / 2, canvas.height / 2);
-                    requestAnimationFrame(gameLoop);
-                    return;
-                }
+    // Initialize image data for pixel-perfect collision if not done
+    if (!gameState.imageDataReady) {
+        createImageData();
+        gameState.imageDataReady = true;
+    }
 
-                drawGround();
-                drawDino();
+    drawGround();
+    drawDino(timestamp);
 
-                if (!gameStarted && !gameOver) {
-                    ctx.fillStyle = 'black';
-                    ctx.font = '24px Arial';
-                    ctx.textAlign = 'center';
-                    ctx.fillText('Press Space or Tap to Start', canvas.width / 2, canvas.height / 2);
-                    ctx.fillText('Hold Bottom-Right to Duck', canvas.width / 2, canvas.height / 2 + 30);
-                } else if (!gameOver) {
-                    frameCount++;
-                    updateDino();
-                    spawnObstacle();
-                    updateObstacles();
-                    speed += 0.0005;
-                    if (checkCollision()) {
-                        gameOver = true;
-                        gameOverDiv.style.display = 'block';
-                        submitScoreDiv.style.display = 'block';
-                    }
-                    for (let obstacle of obstacles) {
-                        drawObstacle(obstacle);
-                    }
-                }
+    if (!gameState.gameStarted && !gameState.gameOver) {
+        ctx.fillStyle = 'black';
+        ctx.font = '24px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText('Press Space or Tap to Start', canvas.width / 2, canvas.height / 2);
+        ctx.fillText('Hold Bottom-Right to Duck', canvas.width / 2, canvas.height / 2 + 30);
+    } else if (!gameState.gameOver) {
+        gameState.frameCount++;
+        updateDino();
+        spawnObstacle();
+        updateObstacles();
+        gameState.speed += 0.0005;
+        if (checkCollision(timestamp)) {
+            gameState.gameOver = true;
+            gameOverDiv.style.display = 'block';
+            submitScoreDiv.style.display = 'block';
+        }
+        for (let obstacle of gameState.obstacles) {
+            drawObstacle(obstacle, timestamp);
+        }
+    }
 
-                scoreDisplay.textContent = score;
-                highScoreDisplay.textContent = highScore;
+    scoreDisplay.textContent = gameState.score;
+    highScoreDisplay.textContent = gameState.highScore;
 
-                requestAnimationFrame(gameLoop);
-            }
-
-            // Start game loop and load high scores asynchronously
-            gameLoop();
-            loadHighScores();
-            updateLocalScoresDisplay();
-        });
-    </script>
-    <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'95ea57c0bb9da9db',t:'MTc1MjQyNjA5MS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script>
-</body>
-</html>
+    requestAnimationFrame(gameLoop);
+           }
+        })
