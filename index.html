@@ -2,66 +2,66 @@
 <html>
 <head>
     <title>Dino Runner Game</title>
-    <link rel="icon" type="image/x-icon" href="/favicon.ico">
+    <link rel="icon" type="image/x-icon" href="/favicon.ico"> <!-- Sets the favicon for the webpage -->
     <style>
         canvas {
-            border: 1px solid black;
-            display: block;
-            margin: 0 auto;
-            max-width: 100vw;
-            max-height: 100vh;
+            border: 1px solid black; /* Adds a black border to the canvas */
+            display: block; /* Ensures the canvas is displayed as a block element */
+            margin: 0 auto; /* Centers the canvas horizontally */
+            max-width: 100vw; /* Limits canvas width to 100% of viewport width */
+            max-height: 100vh; /* Limits canvas height to 100% of viewport height */
         }
         #gameOver {
-            display: none;
-            text-align: center;
-            font-family: Arial, sans-serif;
-            font-size: 24px;
-            margin-top: 20px;
-            color: black;
+            display: none; /* Hides the game over message by default */
+            text-align: center; /* Centers the text horizontally */
+            font-family: Arial, sans-serif; /* Sets the font for the game over message */
+            font-size: 24px; /* Sets the font size */
+            margin-top: 20px; /* Adds space above the message */
+            color: black; /* Sets text color to black */
         }
         #scorePanel {
-            text-align: center;
-            font-family: Arial, sans-serif;
-            margin-top: 10px;
+            text-align: center; /* Centers the score panel text */
+            font-family: Arial, sans-serif; /* Sets the font */
+            margin-top: 10px; /* Adds space above the score panel */
         }
         #submitScore {
-            display: none;
-            text-align: center;
-            margin-top: 20px;
+            display: none; /* Hides the score submission form by default */
+            text-align: center; /* Centers the form text */
+            margin-top: 20px; /* Adds space above the form */
         }
         #leaderboard {
-            text-align: center;
-            font-family: Arial, sans-serif;
-            margin-top: 20px;
+            text-align: center; /* Centers the leaderboard text */
+            font-family: Arial, sans-serif; /* Sets the font */
+            margin-top: 20px; /* Adds space above the leaderboard */
         }
         #errorMessage {
-            color: red;
-            display: none;
-            text-align: center;
+            color: red; /* Sets error message text color to red */
+            display: none; /* Hides the error message by default */
+            text-align: center; /* Centers the error message */
         }
     </style>
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script> <!-- Loads Firebase app compatibility script -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script> <!-- Loads Firebase database compatibility script -->
 </head>
 <body>
-    <canvas id="gameCanvas"></canvas>
-    <div id="gameOver">Game Over! Press Space or Tap to Restart</div>
+    <canvas id="gameCanvas"></canvas> <!-- Canvas element for rendering the game -->
+    <div id="gameOver">Game Over! Press Space or Tap to Restart</div> <!-- Displays game over message and restart instructions -->
     <div id="scorePanel">
-        High Score: <span id="highScore">0</span><br>
-        Score: <span id="score">0</span>
+        High Score: <span id="highScore">0</span><br> <!-- Displays the high score -->
+        Score: <span id="score">0</span> <!-- Displays the current score -->
     </div>
     <div id="submitScore">
-        Enter your name: <input type="text" id="playerName" maxlength="20">
-        <button id="submitScoreButton">Submit Score</button>
+        Enter your name: <input type="text" id="playerName" maxlength="20"> <!-- Input field for player name, limited to 20 characters -->
+        <button id="submitScoreButton">Submit Score</button> <!-- Button to submit the score -->
     </div>
-    <div id="errorMessage"></div>
+    <div id="errorMessage"></div> <!-- Displays error messages if submission fails -->
     <div id="leaderboard">
-        <h3>Global Top 5 High Scores</h3>
-        <ul id="highScoresList"></ul>
+        <h3>Global Top 5 High Scores</h3> <!-- Heading for the leaderboard -->
+        <ul id="highScoresList"></ul> <!-- Unordered list to display top 5 high scores -->
     </div>
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            // Firebase configuration
+            // Firebase configuration object with API credentials and settings
             const firebaseConfig = {
                 apiKey: "AIzaSyAJCkPYWK3mDTsbEw_VDgh30PbY7Z3BhFg",
                 authDomain: "dinogame-r3dnax.firebaseapp.com",
@@ -72,45 +72,45 @@
                 appId: "1:401593443465:web:492e13e480e0488d3d1258",
                 measurementId: "G-JS0KZL2BT5"
             };
-            firebase.initializeApp(firebaseConfig);
+            firebase.initializeApp(firebaseConfig); // Initializes Firebase with the configuration
 
-            const canvas = document.getElementById('gameCanvas');
-            const ctx = canvas.getContext('2d');
-            canvas.width = Math.min(800, window.innerWidth * 0.9);
-            canvas.height = Math.min(400, window.innerHeight * 0.5);
+            const canvas = document.getElementById('gameCanvas'); // Gets the canvas element
+            const ctx = canvas.getContext('2d'); // Gets 2D rendering context for the canvas
+            canvas.width = Math.min(800, window.innerWidth * 0.9); // Sets canvas width to 800px or 90% of viewport width
+            canvas.height = Math.min(400, window.innerHeight * 0.5); // Sets canvas height to 400px or 50% of viewport height
 
             const elements = {
-                gameOverDiv: document.getElementById('gameOver'),
-                scoreDisplay: document.getElementById('score'),
-                highScoreDisplay: document.getElementById('highScore'),
-                submitScoreDiv: document.getElementById('submitScore'),
-                playerNameInput: document.getElementById('playerName'),
-                submitScoreButton: document.getElementById('submitScoreButton'),
-                errorMessage: document.getElementById('errorMessage'),
-                leaderboardDiv: document.getElementById('leaderboard'),
-                highScoresList: document.getElementById('highScoresList')
+                gameOverDiv: document.getElementById('gameOver'), // Reference to the game over div
+                scoreDisplay: document.getElementById('score'), // Reference to the score display span
+                highScoreDisplay: document.getElementById('highScore'), // Reference to the high score display span
+                submitScoreDiv: document.getElementById('submitScore'), // Reference to the score submission div
+                playerNameInput: document.getElementById('playerName'), // Reference to the player name input
+                submitScoreButton: document.getElementById('submitScoreButton'), // Reference to the submit score button
+                errorMessage: document.getElementById('errorMessage'), // Reference to the error message div
+                leaderboardDiv: document.getElementById('leaderboard'), // Reference to the leaderboard div
+                highScoresList: document.getElementById('highScoresList') // Reference to the high scores list
             };
 
             const gameState = {
-                dino: { x: 50, y: 340 - 60, width: 40, height: 60, vy: 0, gravity: 0.8, jumpPower: -15, isJumping: false, isDucking: false },
-                obstacles: [],
-                score: 0,
-                highScore: 0,
-                speed: 5,
-                gameOver: false,
-                gameStarted: false,
-                frameCount: 0,
-                useFallbackShapes: false,
-                imagesLoaded: 0,
-                totalImages: 0,
-                loadTimeout: 5000,
+                dino: { x: 50, y: 340 - 60, width: 40, height: 60, vy: 0, gravity: 0.8, jumpPower: -15, isJumping: false, isDucking: false }, // Initial dino state (position, size, velocity, etc.)
+                obstacles: [], // Array to store obstacle objects
+                score: 0, // Current game score
+                highScore: 0, // Highest score achieved
+                speed: 5, // Initial game speed
+                gameOver: false, // Flag to indicate game over state
+                gameStarted: false, // Flag to indicate if the game has started
+                frameCount: 0, // Tracks the number of frames for animation timing
+                useFallbackShapes: false, // Flag to use fallback shapes if images fail to load
+                imagesLoaded: 0, // Counter for loaded images
+                totalImages: 0, // Total number of images to load
+                loadTimeout: 5000, // Timeout in milliseconds for image loading
                 images: {
-                    dino_run: [new Image(), new Image(), new Image()],
-                    dino_jump: new Image(),
-                    dino_duck: new Image(),
-                    tentacle: [new Image(), new Image()],
-                    sawblade: [new Image(), new Image(), new Image()],
-                    drone: [new Image(), new Image()]
+                    dino_run: [new Image(), new Image(), new Image()], // Array of images for dino running animation
+                    dino_jump: new Image(), // Image for dino jumping
+                    dino_duck: new Image(), // Image for dino ducking
+                    tentacle: [new Image(), new Image()], // Array of images for tentacle animation
+                    sawblade: [new Image(), new Image(), new Image()], // Array of images for sawblade animation
+                    drone: [new Image(), new Image()] // Array of images for drone animation
                 }
             };
 
@@ -125,36 +125,39 @@
             };
 
             function loadImages() {
+                // Loads all game images and sets up event handlers for loading
                 for (let [key, src] of Object.entries(imageSources)) {
                     if (Array.isArray(src)) {
                         gameState.totalImages += src.length;
                         src.forEach((url, index) => {
-                            gameState.images[key][index].onload = () => handleImageLoad();
-                            gameState.images[key][index].onerror = () => handleImageError();
-                            gameState.images[key][index].src = url;
+                            gameState.images[key][index].onload = () => handleImageLoad(); // Increments loaded count on successful load
+                            gameState.images[key][index].onerror = () => handleImageError(); // Handles image loading errors
+                            gameState.images[key][index].src = url; // Sets the image source URL
                         });
                     } else {
                         gameState.totalImages++;
-                        gameState.images[key].onload = () => handleImageLoad();
-                        gameState.images[key].onerror = () => handleImageError();
-                        gameState.images[key].src = src;
+                        gameState.images[key].onload = () => handleImageLoad(); // Increments loaded count on successful load
+                        gameState.images[key].onerror = () => handleImageError(); // Handles image loading errors
+                        gameState.images[key].src = src; // Sets the image source URL
                     }
                 }
                 setTimeout(() => {
                     if (gameState.imagesLoaded < gameState.totalImages) {
-                        gameState.useFallbackShapes = true;
-                        gameState.imagesLoaded = gameState.totalImages;
-                        gameLoop();
+                        gameState.useFallbackShapes = true; // Switches to fallback shapes if loading times out
+                        gameState.imagesLoaded = gameState.totalImages; // Marks all images as loaded
+                        gameLoop(); // Starts the game loop
                     }
                 }, gameState.loadTimeout);
             }
 
             function handleImageLoad() {
+                // Increments the images loaded counter and starts the game when all are loaded
                 gameState.imagesLoaded++;
                 if (gameState.imagesLoaded === gameState.totalImages) gameLoop();
             }
 
             function handleImageError() {
+                // Increments the images loaded counter and enables fallback shapes on error
                 gameState.imagesLoaded++;
                 gameState.useFallbackShapes = true;
                 if (gameState.imagesLoaded === gameState.totalImages) gameLoop();
@@ -162,6 +165,7 @@
 
             // Drawing functions
             function drawDino() {
+                // Draws the dino based on its state (running, jumping, or ducking)
                 if (gameState.useFallbackShapes) {
                     ctx.fillStyle = 'blue';
                     ctx.fillRect(gameState.dino.x, gameState.dino.isDucking ? gameState.dino.y + 20 : gameState.dino.y, gameState.dino.width, gameState.dino.isDucking ? gameState.dino.height / 2 : gameState.dino.height);
@@ -176,6 +180,7 @@
             }
 
             function drawObstacle(obstacle) {
+                // Draws an obstacle based on its type (tentacle, sawblade, or drone)
                 if (gameState.useFallbackShapes) {
                     ctx.fillStyle = obstacle.type === 'tentacle' ? 'purple' : obstacle.type === 'sawblade' ? 'silver' : 'red';
                     if (obstacle.type === 'sawblade') {
@@ -193,19 +198,23 @@
                         ctx.fillRect(obstacle.x, obstacle.y, obstacle.width, obstacle.height);
                     }
                 } else {
-                    const frame = Math.floor(gameState.frameCount / 10) % (obstacle.type === 'tentacle' ? gameState.images.tentacle.length : obstacle.type === 'sawblade' ? gameState.images.sawblade.length : gameState.images.drone.length);
+                    const frame = obstacle.type === 'tentacle' ? Math.floor(gameState.frameCount / 30) % gameState.images.tentacle.length : 
+                                  obstacle.type === 'sawblade' ? Math.floor(gameState.frameCount / 10) % gameState.images.sawblade.length : 
+                                  Math.floor(gameState.frameCount / 10) % gameState.images.drone.length;
                     const imageArray = gameState.images[obstacle.type];
                     ctx.drawImage(imageArray[frame], obstacle.x, obstacle.y, obstacle.width, obstacle.height);
                 }
             }
 
             function drawGround() {
+                // Draws the ground line at y=340
                 ctx.fillStyle = 'gray';
                 ctx.fillRect(0, 340, canvas.width, 10);
             }
 
             // Game logic
             function spawnObstacle() {
+                // Spawns a new obstacle every 100 frames if spacing allows
                 if (gameState.frameCount % 100 === 0) {
                     if (gameState.obstacles.length > 0 && canvas.width - gameState.obstacles[gameState.obstacles.length - 1].x < 200) return;
                     const typeCycle = Math.floor(gameState.frameCount / 100) % 3;
@@ -216,6 +225,7 @@
             }
 
             function updateObstacles() {
+                // Updates obstacle positions and removes off-screen obstacles, increasing score
                 for (let i = gameState.obstacles.length - 1; i >= 0; i--) {
                     gameState.obstacles[i].x -= gameState.speed;
                     if (gameState.obstacles[i].x + gameState.obstacles[i].width < 0) {
@@ -227,6 +237,7 @@
             }
 
             function checkCollision() {
+                // Checks for collision between the dino and any obstacle
                 const dinoHeight = gameState.dino.isDucking ? gameState.dino.height / 2 : gameState.dino.height;
                 const dinoY = gameState.dino.isDucking ? gameState.dino.y + 20 : gameState.dino.y;
                 return gameState.obstacles.some(obstacle =>
@@ -238,6 +249,7 @@
             }
 
             function updateDino() {
+                // Updates the dino's position based on gravity and jumping
                 if (gameState.dino.isJumping) {
                     gameState.dino.vy += gameState.dino.gravity;
                     gameState.dino.y += gameState.dino.vy;
@@ -252,6 +264,7 @@
 
             // Input handling
             document.addEventListener('keydown', (event) => {
+                // Handles keyboard input for game control
                 if (event.code === 'Space' && !gameState.gameOver && !gameState.gameStarted) gameState.gameStarted = true;
                 else if (event.code === 'Space' && !gameState.gameOver && gameState.gameStarted && !gameState.dino.isJumping) {
                     gameState.dino.vy = gameState.dino.jumpPower;
@@ -262,10 +275,12 @@
             });
 
             document.addEventListener('keyup', (event) => {
+                // Handles key release to stop ducking
                 if (event.code === 'ArrowDown') gameState.dino.isDucking = false;
             });
 
             document.addEventListener('touchstart', (event) => {
+                // Handles touch input for game control
                 if (event.target.closest('#submitScore')) return;
                 event.preventDefault();
                 const touch = event.touches[0];
@@ -285,6 +300,7 @@
             });
 
             document.addEventListener('touchend', (event) => {
+                // Handles touch end to stop ducking
                 if (event.target.closest('#submitScore')) return;
                 event.preventDefault();
                 gameState.dino.isDucking = false;
@@ -292,6 +308,7 @@
 
             // Game management
             function resetGame() {
+                // Resets the game state to initial conditions
                 gameState.obstacles = [];
                 gameState.score = 0;
                 gameState.speed = 5;
@@ -308,6 +325,7 @@
             }
 
             function submitScore() {
+                // Submits the high score to Firebase with the player's name
                 const name = elements.playerNameInput.value.trim();
                 if (!name) {
                     elements.errorMessage.textContent = 'Please enter a name';
@@ -331,9 +349,10 @@
                 }
             }
 
-            elements.submitScoreButton.addEventListener('click', submitScore);
+            elements.submitScoreButton.addEventListener('click', submitScore); // Adds click event listener to submit score button
 
             function loadHighScores() {
+                // Fetches and displays the top 5 high scores from Firebase
                 firebase.database().ref('highscores').orderByChild('score').limitToLast(5)
                     .once('value')
                     .then(snapshot => {
@@ -362,49 +381,50 @@
 
             // Game loop
             function gameLoop() {
+                // Main game loop that updates and renders the game
                 console.log('Game loop running');
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.clearRect(0, 0, canvas.width, canvas.height); // Clears the canvas
 
                 if (gameState.imagesLoaded < gameState.totalImages) {
                     ctx.fillStyle = 'black';
                     ctx.font = '24px Arial';
                     ctx.textAlign = 'center';
-                    ctx.fillText(`Loading... ${Math.round((gameState.imagesLoaded / gameState.totalImages) * 100)}%`, canvas.width / 2, canvas.height / 2);
+                    ctx.fillText(`Loading... ${Math.round((gameState.imagesLoaded / gameState.totalImages) * 100)}%`, canvas.width / 2, canvas.height / 2); // Displays loading progress
                     requestAnimationFrame(gameLoop);
                     return;
                 }
 
-                drawGround();
-                drawDino();
+                drawGround(); // Draws the ground
+                drawDino(); // Draws the dino
 
                 if (!gameState.gameStarted && !gameState.gameOver) {
                     ctx.fillStyle = 'black';
                     ctx.font = '24px Arial';
                     ctx.textAlign = 'center';
-                    ctx.fillText('Press Space or Tap to Start', canvas.width / 2, canvas.height / 2);
-                    ctx.fillText('Hold Bottom-Right to Duck', canvas.width / 2, canvas.height / 2 + 30);
+                    ctx.fillText('Press Space or Tap to Start', canvas.width / 2, canvas.height / 2); // Instructions to start
+                    ctx.fillText('Hold Bottom-Right to Duck', canvas.width / 2, canvas.height / 2 + 30); // Instructions to duck
                 } else if (!gameState.gameOver) {
                     gameState.frameCount++;
-                    updateDino();
-                    spawnObstacle();
-                    updateObstacles();
-                    gameState.speed += 0.0005;
+                    updateDino(); // Updates dino position
+                    spawnObstacle(); // Spawns new obstacles
+                    updateObstacles(); // Updates obstacle positions
+                    gameState.speed += 0.0005; // Gradually increases game speed
                     if (checkCollision()) {
-                        gameState.gameOver = true;
+                        gameState.gameOver = true; // Ends game on collision
                         elements.gameOverDiv.style.display = 'block';
                         elements.submitScoreDiv.style.display = 'block';
                     }
-                    gameState.obstacles.forEach(drawObstacle);
+                    gameState.obstacles.forEach(drawObstacle); // Draws all obstacles
                 }
 
-                elements.scoreDisplay.textContent = gameState.score;
-                elements.highScoreDisplay.textContent = gameState.highScore;
-                requestAnimationFrame(gameLoop);
+                elements.scoreDisplay.textContent = gameState.score; // Updates score display
+                elements.highScoreDisplay.textContent = gameState.highScore; // Updates high score display
+                requestAnimationFrame(gameLoop); // Requests next animation frame
             }
 
-            loadImages();
-            loadHighScores();
+            loadImages(); // Initiates image loading
+            loadHighScores(); // Loads initial high scores
         });
     </script>
-</body>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'95f9077abe90673d',t:'MTc1MjU4MDA5MC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
