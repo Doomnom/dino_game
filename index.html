@@ -60,10 +60,9 @@
         <ul id="highScoresList"></ul>
     </div>
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            // Firebase config (replace with server-side proxy in production)
+        document.addEventListener('DOMContentLoaded', () => {
+            // Firebase configuration
             const firebaseConfig = {
-                // Placeholder: Move to server-side or secure with Firebase Rules
                 apiKey: "AIzaSyAJCkPYWK3mDTsbEw_VDgh30PbY7Z3BhFg",
                 authDomain: "dinogame-r3dnax.firebaseapp.com",
                 databaseURL: "https://dinogame-r3dnax-default-rtdb.europe-west1.firebasedatabase.app",
@@ -77,32 +76,23 @@
 
             const canvas = document.getElementById('gameCanvas');
             const ctx = canvas.getContext('2d');
-            // Dynamic canvas sizing
             canvas.width = Math.min(800, window.innerWidth * 0.9);
             canvas.height = Math.min(400, window.innerHeight * 0.5);
-            const gameOverDiv = document.getElementById('gameOver');
-            const scoreDisplay = document.getElementById('score');
-            const highScoreDisplay = document.getElementById('highScore');
-            const submitScoreDiv = document.getElementById('submitScore');
-            const playerNameInput = document.getElementById('playerName');
-            const submitScoreButton = document.getElementById('submitScoreButton');
-            const errorMessage = document.getElementById('errorMessage');
-            const leaderboardDiv = document.getElementById('leaderboard');
-            const highScoresList = document.getElementById('highScoresList');
 
-            // Game objects (encapsulated in state)
+            const elements = {
+                gameOverDiv: document.getElementById('gameOver'),
+                scoreDisplay: document.getElementById('score'),
+                highScoreDisplay: document.getElementById('highScore'),
+                submitScoreDiv: document.getElementById('submitScore'),
+                playerNameInput: document.getElementById('playerName'),
+                submitScoreButton: document.getElementById('submitScoreButton'),
+                errorMessage: document.getElementById('errorMessage'),
+                leaderboardDiv: document.getElementById('leaderboard'),
+                highScoresList: document.getElementById('highScoresList')
+            };
+
             const gameState = {
-                dino: {
-                    x: 50,
-                    y: 340 - 60,
-                    width: 40,
-                    height: 60,
-                    vy: 0,
-                    gravity: 0.8,
-                    jumpPower: -15,
-                    isJumping: false,
-                    isDucking: false
-                },
+                dino: { x: 50, y: 340 - 60, width: 40, height: 60, vy: 0, gravity: 0.8, jumpPower: -15, isJumping: false, isDucking: false },
                 obstacles: [],
                 score: 0,
                 highScore: 0,
@@ -124,114 +114,88 @@
                 }
             };
 
-            // Image sources
-            gameState.images.dino_run[0].src = 'https://doomnom.github.io/dino_game/sprites/dino_run1.png';
-            gameState.images.dino_run[1].src = 'https://doomnom.github.io/dino_game/sprites/dino_run2.png';
-            gameState.images.dino_run[2].src = 'https://doomnom.github.io/dino_game/sprites/dino_run3.png';
-            gameState.images.dino_jump.src = 'https://doomnom.github.io/dino_game/sprites/dino_jump.png';
-            gameState.images.dino_duck.src = 'https://doomnom.github.io/dino_game/sprites/dino_duck.png';
-            gameState.images.tentacle[0].src = 'https://doomnom.github.io/dino_game/sprites/tentacle1.png';
-            gameState.images.tentacle[1].src = 'https://doomnom.github.io/dino_game/sprites/tentacle2.png';
-            gameState.images.sawblade[0].src = 'https://doomnom.github.io/dino_game/sprites/sawblade1.png';
-            gameState.images.sawblade[1].src = 'https://doomnom.github.io/dino_game/sprites/sawblade2.png';
-            gameState.images.sawblade[2].src = 'https://doomnom.github.io/dino_game/sprites/sawblade3.png';
-            gameState.images.drone[0].src = 'https://doomnom.github.io/dino_game/sprites/drone1.png';
-            gameState.images.drone[1].src = 'https://doomnom.github.io/dino_game/sprites/drone2.png';
+            // Image sources and loading
+            const imageSources = {
+                dino_run: ['https://doomnom.github.io/dino_game/sprites/dino_run1.png', 'https://doomnom.github.io/dino_game/sprites/dino_run2.png', 'https://doomnom.github.io/dino_game/sprites/dino_run3.png'],
+                dino_jump: 'https://doomnom.github.io/dino_game/sprites/dino_jump.png',
+                dino_duck: 'https://doomnom.github.io/dino_game/sprites/dino_duck.png',
+                tentacle: ['https://doomnom.github.io/dino_game/sprites/tentacle1.png', 'https://doomnom.github.io/dino_game/sprites/tentacle2.png'],
+                sawblade: ['https://doomnom.github.io/dino_game/sprites/sawblade1.png', 'https://doomnom.github.io/dino_game/sprites/sawblade2.png', 'https://doomnom.github.io/dino_game/sprites/sawblade3.png'],
+                drone: ['https://doomnom.github.io/dino_game/sprites/drone1.png', 'https://doomnom.github.io/dino_game/sprites/drone2.png']
+            };
 
-            // Image loading
-            for (let key in gameState.images) {
-                if (Array.isArray(gameState.images[key])) {
-                    gameState.totalImages += gameState.images[key].length;
-                    gameState.images[key].forEach(img => {
-                        img.onload = () => {
-                            gameState.imagesLoaded++;
-                            if (gameState.imagesLoaded === gameState.totalImages) {
-                                gameLoop(); // Start game loop when all images are loaded
-                            }
-                        };
-                        img.onerror = () => {
-                            gameState.imagesLoaded++;
-                            gameState.useFallbackShapes = true;
-                            if (gameState.imagesLoaded === gameState.totalImages) {
-                                gameLoop(); // Start game loop even if some images fail
-                            }
-                        };
-                    });
-                } else {
-                    gameState.totalImages++;
-                    gameState.images[key].onload = () => {
-                        gameState.imagesLoaded++;
-                        if (gameState.imagesLoaded === gameState.totalImages) {
-                            gameLoop(); // Start game loop when all images are loaded
-                        }
-                    };
-                    gameState.images[key].onerror = () => {
-                        gameState.imagesLoaded++;
-                        gameState.useFallbackShapes = true;
-                        if (gameState.imagesLoaded === gameState.totalImages) {
-                            gameLoop(); // Start game loop even if some images fail
-                        }
-                    };
+            function loadImages() {
+                for (let [key, src] of Object.entries(imageSources)) {
+                    if (Array.isArray(src)) {
+                        gameState.totalImages += src.length;
+                        src.forEach((url, index) => {
+                            gameState.images[key][index].onload = () => handleImageLoad();
+                            gameState.images[key][index].onerror = () => handleImageError();
+                            gameState.images[key][index].src = url;
+                        });
+                    } else {
+                        gameState.totalImages++;
+                        gameState.images[key].onload = () => handleImageLoad();
+                        gameState.images[key].onerror = () => handleImageError();
+                        gameState.images[key].src = src;
+                    }
                 }
+                setTimeout(() => {
+                    if (gameState.imagesLoaded < gameState.totalImages) {
+                        gameState.useFallbackShapes = true;
+                        gameState.imagesLoaded = gameState.totalImages;
+                        gameLoop();
+                    }
+                }, gameState.loadTimeout);
             }
 
-            setTimeout(() => {
-                if (gameState.imagesLoaded < gameState.totalImages) {
-                    gameState.useFallbackShapes = true;
-                    gameState.imagesLoaded = gameState.totalImages;
-                    gameLoop(); // Ensure game starts after timeout
-                }
-            }, gameState.loadTimeout);
+            function handleImageLoad() {
+                gameState.imagesLoaded++;
+                if (gameState.imagesLoaded === gameState.totalImages) gameLoop();
+            }
+
+            function handleImageError() {
+                gameState.imagesLoaded++;
+                gameState.useFallbackShapes = true;
+                if (gameState.imagesLoaded === gameState.totalImages) gameLoop();
+            }
 
             // Drawing functions
             function drawDino() {
                 if (gameState.useFallbackShapes) {
                     ctx.fillStyle = 'blue';
-                    if (gameState.dino.isDucking) {
-                        ctx.fillRect(gameState.dino.x, gameState.dino.y + 20, gameState.dino.width, gameState.dino.height / 2);
-                    } else {
-                        ctx.fillRect(gameState.dino.x, gameState.dino.y, gameState.dino.width, gameState.dino.height);
-                    }
+                    ctx.fillRect(gameState.dino.x, gameState.dino.isDucking ? gameState.dino.y + 20 : gameState.dino.y, gameState.dino.width, gameState.dino.isDucking ? gameState.dino.height / 2 : gameState.dino.height);
+                } else if (gameState.dino.isDucking) {
+                    ctx.drawImage(gameState.images.dino_duck, gameState.dino.x, gameState.dino.y + 20, gameState.dino.width, gameState.dino.height / 2);
+                } else if (gameState.dino.isJumping) {
+                    ctx.drawImage(gameState.images.dino_jump, gameState.dino.x, gameState.dino.y, gameState.dino.width, gameState.dino.height);
                 } else {
-                    if (gameState.dino.isDucking) {
-                        ctx.drawImage(gameState.images.dino_duck, gameState.dino.x, gameState.dino.y + 20, gameState.dino.width, gameState.dino.height / 2);
-                    } else if (gameState.dino.isJumping) {
-                        ctx.drawImage(gameState.images.dino_jump, gameState.dino.x, gameState.dino.y, gameState.dino.width, gameState.dino.height);
-                    } else {
-                        const frame = Math.floor(gameState.frameCount / 10) % gameState.images.dino_run.length;
-                        ctx.drawImage(gameState.images.dino_run[frame], gameState.dino.x, gameState.dino.y, gameState.dino.width, gameState.dino.height);
-                    }
+                    const frame = Math.floor(gameState.frameCount / 10) % gameState.images.dino_run.length;
+                    ctx.drawImage(gameState.images.dino_run[frame], gameState.dino.x, gameState.dino.y, gameState.dino.width, gameState.dino.height);
                 }
             }
 
             function drawObstacle(obstacle) {
                 if (gameState.useFallbackShapes) {
-                    if (obstacle.type === 'tentacle') {
-                        ctx.fillStyle = 'purple';
-                        ctx.fillRect(obstacle.x, obstacle.y, obstacle.width, obstacle.height);
-                    } else if (obstacle.type === 'sawblade') {
-                        ctx.fillStyle = 'silver';
+                    ctx.fillStyle = obstacle.type === 'tentacle' ? 'purple' : obstacle.type === 'sawblade' ? 'silver' : 'red';
+                    if (obstacle.type === 'sawblade') {
                         ctx.beginPath();
                         ctx.arc(obstacle.x + obstacle.width / 2, obstacle.y + obstacle.height / 2, obstacle.width / 2, 0, Math.PI * 2);
                         ctx.fill();
                     } else if (obstacle.type === 'drone') {
-                        ctx.fillStyle = 'red';
                         ctx.beginPath();
                         ctx.moveTo(obstacle.x, obstacle.y + obstacle.height);
                         ctx.lineTo(obstacle.x + obstacle.width / 2, obstacle.y);
                         ctx.lineTo(obstacle.x + obstacle.width, obstacle.y + obstacle.height);
                         ctx.closePath();
                         ctx.fill();
+                    } else {
+                        ctx.fillRect(obstacle.x, obstacle.y, obstacle.width, obstacle.height);
                     }
                 } else {
-                    const frame = Math.floor(gameState.frameCount / 10) % (obstacle.type === 'tentacle' ? gameState.images.tentacle.length : obstacle.type === 'sawblade' ? gameState.images.sawblade.length : gameState.images.drone.length); // Reverted to /10
-                    if (obstacle.type === 'tentacle') {
-                        ctx.drawImage(gameState.images.tentacle[frame], obstacle.x, obstacle.y, obstacle.width, obstacle.height);
-                    } else if (obstacle.type === 'sawblade') {
-                        ctx.drawImage(gameState.images.sawblade[frame], obstacle.x, obstacle.y, obstacle.width, obstacle.height);
-                    } else if (obstacle.type === 'drone') {
-                        ctx.drawImage(gameState.images.drone[frame], obstacle.x, obstacle.y, obstacle.width, obstacle.height);
-                    }
+                    const frame = Math.floor(gameState.frameCount / 10) % (obstacle.type === 'tentacle' ? gameState.images.tentacle.length : obstacle.type === 'sawblade' ? gameState.images.sawblade.length : gameState.images.drone.length);
+                    const imageArray = gameState.images[obstacle.type];
+                    ctx.drawImage(imageArray[frame], obstacle.x, obstacle.y, obstacle.width, obstacle.height);
                 }
             }
 
@@ -242,30 +206,12 @@
 
             // Game logic
             function spawnObstacle() {
-                if (gameState.frameCount % 100 === 0) { // Fixed interval of 100 frames (~1.67s at 60 FPS)
-                    let canSpawn = true;
-                    if (gameState.obstacles.length > 0) {
-                        let lastObstacle = gameState.obstacles[gameState.obstacles.length - 1];
-                        if (canvas.width - lastObstacle.x < 200) { // Ensure minimum 200px spacing
-                            canSpawn = false;
-                        }
-                    }
-                    if (canSpawn) {
-                        let type, yPos;
-                        // Cycle through types to mimic Chrome's pattern with variety
-                        const typeCycle = Math.floor(gameState.frameCount / 100) % 3;
-                        type = typeCycle === 0 ? 'tentacle' : typeCycle === 1 ? 'sawblade' : 'drone';
-                        // Fixed height range for jumpability (Chrome cacti are ~20-50px high, placed at ~290-310px)
-                        yPos = 290 + Math.floor(Math.random() * 20); // 290-310px, all jumpable
-                        let obstacle = {
-                            x: canvas.width,
-                            y: yPos,
-                            width: type === 'tentacle' ? 20 : 30,
-                            height: type === 'tentacle' ? 40 : 30,
-                            type: type
-                        };
-                        gameState.obstacles.push(obstacle);
-                    }
+                if (gameState.frameCount % 100 === 0) {
+                    if (gameState.obstacles.length > 0 && canvas.width - gameState.obstacles[gameState.obstacles.length - 1].x < 200) return;
+                    const typeCycle = Math.floor(gameState.frameCount / 100) % 3;
+                    const type = typeCycle === 0 ? 'tentacle' : typeCycle === 1 ? 'sawblade' : 'drone';
+                    const yPos = 290 + Math.floor(Math.random() * 20);
+                    gameState.obstacles.push({ x: canvas.width, y: yPos, width: type === 'tentacle' ? 20 : 30, height: type === 'tentacle' ? 40 : 30, type });
                 }
             }
 
@@ -275,76 +221,52 @@
                     if (gameState.obstacles[i].x + gameState.obstacles[i].width < 0) {
                         gameState.obstacles.splice(i, 1);
                         gameState.score += 10;
-                        if (gameState.score > gameState.highScore) {
-                            gameState.highScore = gameState.score;
-                        }
+                        gameState.highScore = Math.max(gameState.highScore, gameState.score);
                     }
                 }
             }
 
             function checkCollision() {
-                for (let obstacle of gameState.obstacles) {
-                    let dinoHeight = gameState.dino.isDucking ? gameState.dino.height / 2 : gameState.dino.height;
-                    let dinoY = gameState.dino.isDucking ? gameState.dino.y + 20 : gameState.dino.y;
-                    // Adjust collision to be more forgiving
-                    if (gameState.dino.x + gameState.dino.width > obstacle.x &&
-                        gameState.dino.x < obstacle.x + obstacle.width &&
-                        dinoY + dinoHeight > obstacle.y &&
-                        dinoY < obstacle.y + obstacle.height) {
-                        return true;
-                    }
-                }
-                return false;
+                const dinoHeight = gameState.dino.isDucking ? gameState.dino.height / 2 : gameState.dino.height;
+                const dinoY = gameState.dino.isDucking ? gameState.dino.y + 20 : gameState.dino.y;
+                return gameState.obstacles.some(obstacle =>
+                    gameState.dino.x + gameState.dino.width > obstacle.x &&
+                    gameState.dino.x < obstacle.x + obstacle.width &&
+                    dinoY + dinoHeight > obstacle.y &&
+                    dinoY < obstacle.y + obstacle.height
+                );
             }
 
             function updateDino() {
                 if (gameState.dino.isJumping) {
                     gameState.dino.vy += gameState.dino.gravity;
                     gameState.dino.y += gameState.dino.vy;
-                    if (gameState.dino.isDucking) {
-                        if (gameState.dino.y > 340 - gameState.dino.height / 2) {
-                            gameState.dino.y = 340 - gameState.dino.height / 2;
-                            gameState.dino.vy = 0;
-                            gameState.dino.isJumping = false;
-                        }
-                    } else {
-                        if (gameState.dino.y > 340 - gameState.dino.height) {
-                            gameState.dino.y = 340 - gameState.dino.height;
-                            gameState.dino.vy = 0;
-                            gameState.dino.isJumping = false;
-                        }
+                    const groundY = gameState.dino.isDucking ? 340 - gameState.dino.height / 2 : 340 - gameState.dino.height;
+                    if (gameState.dino.y > groundY) {
+                        gameState.dino.y = groundY;
+                        gameState.dino.vy = 0;
+                        gameState.dino.isJumping = false;
                     }
                 }
             }
 
-            // Input handling - Keyboard
-            document.addEventListener('keydown', function(event) {
-                if (event.code === 'Space' && !gameState.gameOver && !gameState.gameStarted) {
-                    gameState.gameStarted = true;
-                } else if (event.code === 'Space' && !gameState.gameOver && gameState.gameStarted) {
-                    if (!gameState.dino.isJumping) {
-                        gameState.dino.vy = gameState.dino.jumpPower;
-                        gameState.dino.isJumping = true;
-                        gameState.dino.isDucking = false;
-                    }
-                } else if (event.code === 'ArrowDown' && !gameState.gameOver && !gameState.dino.isJumping && gameState.gameStarted) {
-                    gameState.dino.isDucking = true;
-                } else if (event.code === 'Space' && gameState.gameOver) {
-                    resetGame();
-                }
-            });
-
-            document.addEventListener('keyup', function(event) {
-                if (event.code === 'ArrowDown') {
+            // Input handling
+            document.addEventListener('keydown', (event) => {
+                if (event.code === 'Space' && !gameState.gameOver && !gameState.gameStarted) gameState.gameStarted = true;
+                else if (event.code === 'Space' && !gameState.gameOver && gameState.gameStarted && !gameState.dino.isJumping) {
+                    gameState.dino.vy = gameState.dino.jumpPower;
+                    gameState.dino.isJumping = true;
                     gameState.dino.isDucking = false;
-                }
+                } else if (event.code === 'ArrowDown' && !gameState.gameOver && !gameState.dino.isJumping && gameState.gameStarted) gameState.dino.isDucking = true;
+                else if (event.code === 'Space' && gameState.gameOver) resetGame();
             });
 
-            // Input handling - Touch
-            document.addEventListener('touchstart', function(event) {
-                if (event.target.closest('#submitScore')) {
-                    return;
-                }
+            document.addEventListener('keyup', (event) => {
+                if (event.code === 'ArrowDown') gameState.dino.isDucking = false;
+            });
+
+            document.addEventListener('touchstart', (event) => {
+                if (event.target.closest('#submitScore')) return;
                 event.preventDefault();
                 const touch = event.touches[0];
                 const rect = canvas.getBoundingClientRect();
@@ -354,105 +276,93 @@
                 if (touchX >= 0 && touchY >= 0 && touchX <= canvas.width && touchY <= canvas.height &&
                     touchX > canvas.width / 2 && touchY > canvas.height / 2 && !gameState.gameOver && !gameState.dino.isJumping && gameState.gameStarted) {
                     gameState.dino.isDucking = true;
-                } else {
-                    if (!gameState.gameOver && !gameState.gameStarted) {
-                        gameState.gameStarted = true;
-                    } else if (!gameState.gameOver && gameState.gameStarted && !gameState.dino.isJumping) {
-                        gameState.dino.vy = gameState.dino.jumpPower;
-                        gameState.dino.isJumping = true;
-                        gameState.dino.isDucking = false;
-                    } else if (gameState.gameOver) {
-                        resetGame();
-                    }
-                }
+                } else if (!gameState.gameOver && !gameState.gameStarted) gameState.gameStarted = true;
+                else if (!gameState.gameOver && gameState.gameStarted && !gameState.dino.isJumping) {
+                    gameState.dino.vy = gameState.dino.jumpPower;
+                    gameState.dino.isJumping = true;
+                    gameState.dino.isDucking = false;
+                } else if (gameState.gameOver) resetGame();
             });
 
-            document.addEventListener('touchend', function(event) {
-                if (event.target.closest('#submitScore')) {
-                    return;
-                }
+            document.addEventListener('touchend', (event) => {
+                if (event.target.closest('#submitScore')) return;
                 event.preventDefault();
                 gameState.dino.isDucking = false;
             });
 
-            // Reset game state
+            // Game management
             function resetGame() {
                 gameState.obstacles = [];
                 gameState.score = 0;
                 gameState.speed = 5;
                 gameState.gameOver = false;
                 gameState.gameStarted = false;
-                gameOverDiv.style.display = 'none';
                 gameState.dino.y = 340 - gameState.dino.height;
                 gameState.dino.vy = 0;
                 gameState.dino.isJumping = false;
                 gameState.dino.isDucking = false;
-                submitScoreDiv.style.display = 'none';
-                errorMessage.style.display = 'none';
+                elements.gameOverDiv.style.display = 'none';
+                elements.submitScoreDiv.style.display = 'none';
+                elements.errorMessage.style.display = 'none';
                 loadHighScores();
             }
 
-            // Score submission
             function submitScore() {
-                const name = playerNameInput.value.trim();
+                const name = elements.playerNameInput.value.trim();
                 if (!name) {
-                    errorMessage.textContent = 'Please enter a name';
-                    errorMessage.style.display = 'block';
+                    elements.errorMessage.textContent = 'Please enter a name';
+                    elements.errorMessage.style.display = 'block';
                     return;
                 }
                 if (gameState.highScore > 0) {
-                    const scoreEntry = { name: name, score: gameState.highScore, timestamp: Date.now() };
-                    firebase.database().ref('highscores').push(scoreEntry)
+                    firebase.database().ref('highscores').push({ name, score: gameState.highScore, timestamp: Date.now() })
                         .then(() => {
-                            playerNameInput.value = '';
-                            submitScoreDiv.style.display = 'none';
-                            errorMessage.style.display = 'none';
+                            elements.playerNameInput.value = '';
+                            elements.submitScoreDiv.style.display = 'none';
+                            elements.errorMessage.style.display = 'none';
                             loadHighScores();
                         })
                         .catch(error => {
-                            errorMessage.textContent = 'Error submitting score: ' + error.message;
-                            errorMessage.style.display = 'block';
+                            elements.errorMessage.textContent = 'Error submitting score: ' + error.message;
+                            elements.errorMessage.style.display = 'block';
                         });
                 } else {
-                    submitScoreDiv.style.display = 'none';
+                    elements.submitScoreDiv.style.display = 'none';
                 }
             }
 
-            submitScoreButton.addEventListener('click', submitScore);
+            elements.submitScoreButton.addEventListener('click', submitScore);
 
-            // Load high scores
             function loadHighScores() {
                 firebase.database().ref('highscores').orderByChild('score').limitToLast(5)
                     .once('value')
                     .then(snapshot => {
-                        highScoresList.innerHTML = '';
+                        elements.highScoresList.innerHTML = '';
                         const scores = [];
-                        snapshot.forEach(childSnapshot => {
-                            scores.unshift(childSnapshot.val());
-                        });
+                        snapshot.forEach(childSnapshot => scores.unshift(childSnapshot.val()));
                         if (scores.length) {
                             scores.forEach(s => {
                                 const li = document.createElement('li');
                                 li.textContent = `${s.name}: ${s.score}`;
-                                highScoresList.appendChild(li);
+                                elements.highScoresList.appendChild(li);
                             });
                         } else {
                             const li = document.createElement('li');
                             li.textContent = 'No high scores yet.';
-                            highScoresList.appendChild(li);
+                            elements.highScoresList.appendChild(li);
                         }
                     })
                     .catch(error => {
                         console.error('Leaderboard fetch error:', error);
                         const li = document.createElement('li');
                         li.textContent = 'Error loading high scores.';
-                        highScoresList.appendChild(li);
+                        elements.highScoresList.appendChild(li);
                     });
             }
 
             // Game loop
             function gameLoop() {
-                console.log('Game loop running'); // Debug log
+                console.log('Game loop running');
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
 
                 if (gameState.imagesLoaded < gameState.totalImages) {
@@ -481,21 +391,18 @@
                     gameState.speed += 0.0005;
                     if (checkCollision()) {
                         gameState.gameOver = true;
-                        gameOverDiv.style.display = 'block';
-                        submitScoreDiv.style.display = 'block';
+                        elements.gameOverDiv.style.display = 'block';
+                        elements.submitScoreDiv.style.display = 'block';
                     }
-                    for (let obstacle of gameState.obstacles) {
-                        drawObstacle(obstacle);
-                    }
+                    gameState.obstacles.forEach(drawObstacle);
                 }
 
-                scoreDisplay.textContent = gameState.score;
-                highScoreDisplay.textContent = gameState.highScore;
-
+                elements.scoreDisplay.textContent = gameState.score;
+                elements.highScoreDisplay.textContent = gameState.highScore;
                 requestAnimationFrame(gameLoop);
             }
 
-            gameLoop(); // Initial call to start the loop
+            loadImages();
             loadHighScores();
         });
     </script>
